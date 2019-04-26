@@ -1,0 +1,13 @@
+[package]
+name = "rust-sssmc39"
+version = "0.1.0"
+authors = ["Yeastplume <yeastplume@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+lazy_static = "1"
+
+[dev-dependencies]
+quickcheck = "0.4"
+flate2 = "0.2"
+itertools = "0.7"
