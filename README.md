@@ -4,7 +4,7 @@
 "Hold my vodka" *-Yeastplume*
 
 
-Credits
+## Credits
 
 Portions of the code taken from [Rusty Secrets](https://github.com/SpinResearch/RustySecrets), with license details in all derived source files.
 
