@@ -3,13 +3,31 @@
 // TODO: LICENSE TEXT
 //
 
+use std::collections::HashMap;
+
 #[macro_use]
 extern crate lazy_static;
 
+use error::{Error, ErrorKind};
+
 mod math;
+mod error;
+
+
+lazy_static! {
+	/// List of ssmc words
+	pub static ref WORDLIST: Vec<String> = { include_str!("wordlists/en.txt").split_whitespace().map(|s| s.into()).collect() };
+	pub static ref WORD_INDEX_MAP: HashMap<String, usize> = {
+		let mut retval = HashMap::new();
+		for (i, item) in WORDLIST.iter().enumerate() {
+			retval.insert(item.to_owned(), i);
+		}
+		retval
+	};
+}
 
 /// Config Struct
-#[derive( Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShamirMnemonicConfig {
 	/// The length of the radix in bits
 	radix_bits: u8,
@@ -64,7 +82,7 @@ pub struct ShamirMnemonic {
 	radix: u16,
 	/// The length of the random identifier and iteration exponent in words
 	id_exp_length_words: u8,
-		/// The length of mnemonic is words without the share value
+	/// The length of mnemonic is words without the share value
 	metadata_length_words: u8,
 	/// The minimum allowed length of the mnemonic in words
 	min_mnemonic_length_words: u8,
@@ -72,25 +90,33 @@ pub struct ShamirMnemonic {
 
 impl ShamirMnemonic {
 	/// Create new
-	pub fn new(config: &ShamirMnemonicConfig) -> ShamirMnemonic {
+	pub fn new(config: &ShamirMnemonicConfig) -> Result<ShamirMnemonic, Error> {
 		let radix = 2u16.pow(config.radix_bits as u32);
-		let id_exp_length_words = (config.id_length_bits + config.iteration_exp_length_bits) / config.radix_bits;
+		let id_exp_length_words =
+			(config.id_length_bits + config.iteration_exp_length_bits) / config.radix_bits;
 		let metadata_length_words = id_exp_length_words + 2 + config.checksum_length_words;
-		let min_mnemonic_length_words = metadata_length_words + (config.min_strength_bits as f64 / 10f64).ceil() as u8;
-		ShamirMnemonic {
+		let min_mnemonic_length_words =
+			metadata_length_words + (config.min_strength_bits as f64 / 10f64).ceil() as u8;
+		if WORDLIST.len() != radix as usize {
+			return Err(ErrorKind::Config(format!("The wordlist should contain {} words, but it contains {} words.", radix, WORDLIST.len())))?;
+		}
+		Ok(ShamirMnemonic {
 			config: config.to_owned(),
 			radix,
 			id_exp_length_words,
 			metadata_length_words,
 			min_mnemonic_length_words,
-		}
+		})
 	}
 }
 
 #[cfg(test)]
 mod tests {
+	use super::*;
 	#[test]
-	fn it_works() {
-		assert_eq!(2 + 2, 4);
+	fn it_works() -> Result<(), error::Error> {
+		let config = ShamirMnemonicConfig::default();
+		let _sm = ShamirMnemonic::new(&config)?;
+		Ok(())
 	}
 }
