@@ -8,6 +8,11 @@ edition = "2018"
 lazy_static = "1"
 failure = "0.1"
 failure_derive = "0.1"
+rand = "0.6"
+digest = "0.8"
+hmac = "0.7"
+sha2 = "0.8"
+pbkdf2 = "0.3"
 
 [dev-dependencies]
 quickcheck = "0.4"

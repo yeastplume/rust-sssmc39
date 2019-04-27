@@ -22,6 +22,9 @@ pub enum ErrorKind {
 	#[fail(display = "Configuration Error: {}", _0)]
 	Config(String),
 
+	#[fail(display = "Argument Error: {}", _0)]
+	Argument(String),
+
 	/// Other
 	#[fail(display = "Generic error: {}", _0)]
 	GenericError(String),
