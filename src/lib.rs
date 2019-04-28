@@ -12,14 +12,13 @@ use std::collections::HashMap;
 extern crate lazy_static;
 
 use error::{Error, ErrorKind};
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
 use math::gf256::Gf256;
 use math::lagrange;
-
 
 // Create alias for HMAC-SHA256
 type HmacSha256 = Hmac<Sha256>;
@@ -177,7 +176,8 @@ impl ShamirMnemonic {
 			});
 		}
 
-		let random_part = fill_vec_rand(shared_secret.len() - self.config.digest_length_bytes as usize);
+		let random_part =
+			fill_vec_rand(shared_secret.len() - self.config.digest_length_bytes as usize);
 		let mut digest = self.create_digest(&random_part.to_vec(), &shared_secret);
 		digest.append(&mut random_part.to_vec());
 
@@ -189,7 +189,7 @@ impl ShamirMnemonic {
 
 		base_shares.push(Share {
 			member_index: self.config.secret_index,
-			data: shared_secret.to_owned()
+			data: shared_secret.to_owned(),
 		});
 
 		for i in random_share_count..share_count {
@@ -200,7 +200,7 @@ impl ShamirMnemonic {
 	}
 
 	/// recover a secret
-	pub fn recover_secret(&self, shares: &Vec<Share>, threshold:u8) -> Result<Share, Error> {
+	pub fn recover_secret(&self, shares: &Vec<Share>, threshold: u8) -> Result<Share, Error> {
 		let shared_secret = ShamirMnemonic::interpolate(shares, self.config.secret_index)?;
 
 		if threshold != 1 {
@@ -211,14 +211,15 @@ impl ShamirMnemonic {
 	}
 
 	fn interpolate(shares: &Vec<Share>, x: u8) -> Result<Share, Error> {
-		let x_coords:Vec<u8> = shares.iter()
-			.map(|s| s.member_index)
-			.collect();
+		let x_coords: Vec<u8> = shares.iter().map(|s| s.member_index).collect();
 
 		if x_coords.contains(&x) {
 			for s in shares {
 				if s.member_index == x {
-					return Ok(Share{member_index:x, data:s.data.clone()});
+					return Ok(Share {
+						member_index: x,
+						data: s.data.clone(),
+					});
 				}
 			}
 		}
@@ -238,8 +239,14 @@ impl ShamirMnemonic {
 		};
 
 		for i in 0..share_value_lengths {
-			let points:Vec<(Gf256, Gf256)> = shares.iter()
-				.map(|s| (Gf256::from_byte(s.member_index), Gf256::from_byte(s.data[i])))
+			let points: Vec<(Gf256, Gf256)> = shares
+				.iter()
+				.map(|s| {
+					(
+						Gf256::from_byte(s.member_index),
+						Gf256::from_byte(s.data[i]),
+					)
+				})
 				.collect();
 			let poly = lagrange::interpolate(&points);
 			let y = poly.evaluate_at(Gf256::from_byte(x));
@@ -249,7 +256,7 @@ impl ShamirMnemonic {
 		Ok(ret_share)
 	}
 
-	fn create_digest(&self, random_data: &Vec<u8>, shared_secret: &Vec<u8>) -> Vec<u8>{
+	fn create_digest(&self, random_data: &Vec<u8>, shared_secret: &Vec<u8>) -> Vec<u8> {
 		let mut mac = HmacSha256::new_varkey(random_data).expect("HMAC error");
 		mac.input(shared_secret);
 		let mut result = [0u8; 32];
@@ -259,7 +266,7 @@ impl ShamirMnemonic {
 		ret_vec
 	}
 
-	fn check_digest(&self, shares:&Vec<Share>, shared_secret: &Share) -> Result<(), Error> {
+	fn check_digest(&self, shares: &Vec<Share>, shared_secret: &Share) -> Result<(), Error> {
 		let digest_share = ShamirMnemonic::interpolate(shares, self.config.digest_index)?;
 		let mut digest = digest_share.data.clone();
 		let random_part = digest.split_off(self.config.digest_length_bytes as usize);
@@ -275,7 +282,7 @@ impl ShamirMnemonic {
 // fill a u8 vec with n bytes of random data
 fn fill_vec_rand(n: usize) -> Vec<u8> {
 	let mut v = vec![];
-	for _ in 0 .. n {
+	for _ in 0..n {
 		v.push(thread_rng().gen());
 	}
 	v
@@ -287,7 +294,12 @@ mod tests {
 
 	// run split and recover given shares and thresholds, then check random combinations of threshold
 	// shares reconstruct the secret
-	fn split_recover_impl(sm: &ShamirMnemonic, secret_length_bytes: usize, threshold: u8, total_shares: u8) -> Result<(), error::Error> {
+	fn split_recover_impl(
+		sm: &ShamirMnemonic,
+		secret_length_bytes: usize,
+		threshold: u8,
+		total_shares: u8,
+	) -> Result<(), error::Error> {
 		let secret = fill_vec_rand(secret_length_bytes);
 		println!("Secret is: {:?}", secret);
 		let mut shares = sm.split_secret(threshold, total_shares, &secret)?;
@@ -297,10 +309,10 @@ mod tests {
 			println!("Recovered secret is: {:?}", secret);
 			assert_eq!(secret, recovered_secret.data);
 			if threshold == 1 {
-				return Ok(())
+				return Ok(());
 			}
 			// randomly remove a share till we're at threshold
-			let remove_index = thread_rng().gen_range(0,shares.len());
+			let remove_index = thread_rng().gen_range(0, shares.len());
 			shares.remove(remove_index);
 		}
 		// now remove one more, and recovery should fail

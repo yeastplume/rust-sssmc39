@@ -36,9 +36,8 @@
 // TODO: LICENSE TEXT
 //
 
-use std::fmt;
 use crate::math::gf256::Gf256;
-
+use std::fmt;
 
 static MAX_COEFFS: usize = 256;
 
