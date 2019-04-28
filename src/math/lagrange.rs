@@ -43,15 +43,15 @@ use crate::math::poly::Poly;
 /// the polynomial is determined using barycentric Lagrange
 /// interpolation based on the given `points` in
 /// the G(2^8) Galois field.
-pub fn interpolate_at(k: u8, points: &[(u8, u8)]) -> u8 {
-	barycentric_interpolate_at(k as usize, points)
+pub fn _interpolate_at(k: u8, points: &[(u8, u8)]) -> u8 {
+	_barycentric_interpolate_at(k as usize, points)
 }
 
 /// Barycentric Lagrange interpolation algorithm from "Polynomial
 /// Interpolation: Langrange vs Newton" by Wilhelm Werner. Evaluates
 /// the polynomial at `Gf256::zero()`.
 #[inline]
-fn barycentric_interpolate_at(k: usize, points: &[(u8, u8)]) -> u8 {
+fn _barycentric_interpolate_at(k: usize, points: &[(u8, u8)]) -> u8 {
 	// Compute the barycentric weights `w`.
 	let mut w = vec![Gf256::zero(); k];
 	w[0] = Gf256::one();
@@ -90,7 +90,6 @@ pub fn interpolate(points: &[(Gf256, Gf256)]) -> Poly {
 	let mut poly = vec![Gf256::zero(); len];
 
 	for &(x, y) in points {
-		assert_ne!(x.poly, 0, "Invalid share x = 0");
 		let mut coeffs = vec![Gf256::zero(); len];
 		coeffs[0] = y;
 
@@ -170,7 +169,7 @@ mod tests {
 			let poly = interpolate(&elems);
 
 			let equals = poly.evaluate_at(Gf256::zero()).to_byte()
-				== interpolate_at(points.len() as u8, points.as_slice());
+				== _interpolate_at(points.len() as u8, points.as_slice());
 
 			TestResult::from_bool(equals)
 		}

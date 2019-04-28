@@ -25,6 +25,12 @@ pub enum ErrorKind {
 	#[fail(display = "Argument Error: {}", _0)]
 	Argument(String),
 
+	#[fail(display = "Mneumonic Error: {}", _0)]
+	Mneumonic(String),
+
+	#[fail(display = "Digest Error: {}", _0)]
+	Digest(String),
+
 	/// Other
 	#[fail(display = "Generic error: {}", _0)]
 	GenericError(String),

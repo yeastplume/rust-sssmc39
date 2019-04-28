@@ -36,7 +36,9 @@
 // TODO: LICENSE TEXT
 //
 
+use std::fmt;
 use crate::math::gf256::Gf256;
+
 
 static MAX_COEFFS: usize = 256;
 
@@ -44,12 +46,22 @@ pub struct Poly {
 	pub coeffs: Vec<Gf256>,
 }
 
+impl fmt::Debug for Poly {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		let _ = write!(f, "(");
+		for i in 0..self.coeffs.len() {
+			let _ = write!(f, "{:?}, ", self.coeffs[i]);
+		}
+		writeln!(f, ")")
+	}
+}
+
 impl Poly {
 	pub fn new(coeffs: Vec<Gf256>) -> Self {
 		Self { coeffs }
 	}
 
-	pub fn evaluate_at_zero(&self) -> Gf256 {
+	pub fn _evaluate_at_zero(&self) -> Gf256 {
 		self.coeffs[0]
 	}
 

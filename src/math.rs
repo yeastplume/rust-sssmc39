@@ -13,6 +13,6 @@
 #![warn(missing_docs)]
 
 #[macro_use]
-mod gf256;
-mod lagrange;
+pub mod gf256;
+pub mod lagrange;
 mod poly;
