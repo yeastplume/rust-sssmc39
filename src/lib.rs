@@ -5,7 +5,7 @@
 
 mod config;
 mod error;
-mod math;
+mod field;
 mod share;
 mod util;
 
@@ -18,8 +18,8 @@ use rand::{thread_rng, Rng};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
-use math::gf256::Gf256;
-use math::lagrange;
+use field::gf256::Gf256;
+use field::lagrange;
 
 use config::ShamirMnemonicConfig;
 use share::Share;
