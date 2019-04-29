@@ -16,9 +16,12 @@ use rand::{thread_rng, Rng};
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
+use bitvec::BitVec;
 
 use math::gf256::Gf256;
 use math::lagrange;
+
+// Constants
 
 // Create alias for HMAC-SHA256
 type HmacSha256 = Hmac<Sha256>;
@@ -85,10 +88,123 @@ impl Default for ShamirMnemonicConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Share {
-	/// Member index, or x value of the member share in the given group
+	/// Random 15 bit value which is the same for all shares and is used to verify
+	/// that the shares belong together; it is also used as salt in the encryption
+	/// of the master secret. (15 bits)
+	pub identifier: u16,
+	/// Indicates the total number of iterations to be used in PBKDF2. The number of
+	/// iterations is calculated as 10000x2^e. (5 bits)
+	pub iteration_exponent: u8,
+	/// The x value of the group share (4 bits)
+	pub group_index: u8,
+	/// indicates how many group shares are needed to reconstruct the master secret.
+	/// The actual value is endoded as Gt = GT - 1, so a value of 0 indicates that a
+	/// single group share is needed (GT = 1), a value of 1 indicates that two group shares
+	/// are needed (GT = 2) etc. (4 bits)
+	pub group_threshold: u8,
+	/// indicates the total number of groups. The actual value is encoded as g = G - 1
+	/// (4 bits)
+	pub group_count: u8,
+	/// Member index, or x value of the member share in the given group (4 bits)
 	pub member_index: u8,
-	/// Share data
-	pub data: Vec<u8>,
+	/// indicates how many member shares are needed to reconstruct the group share. The actual value
+	/// is encoded as t = T − 1. (4 bits)
+	pub member_threshold: u8,
+	/// corresponds to a list of the SSS part's fk(x) values 1 ≤ k ≤ n. Each fk(x) value is encoded
+	/// as a string of eight bits in big-endian order. The concatenation of these bit strings is
+	/// the share value. This value is left-padded with "0" bits so that the length of the padded
+	/// share value in bits becomes the nearest multiple of 10. (padding + 8n bits)
+	pub share_value: Vec<u8>,
+	/// an RS1024 checksum of the data part of the share
+	/// (that is id || e || GI || Gt || g || I || t || ps). The customization string (cs) of
+	/// RS1024 is "shamir". (30 bits)
+	pub checksum: u32,
+}
+
+impl Default for Share {
+	fn default() -> Self {
+		Share {
+			identifier: 0,
+			iteration_exponent: 0,
+			group_index: 0,
+			group_threshold: 0,
+			group_count: 0,
+			member_index: 0,
+			member_threshold: 0,
+			share_value: vec![],
+			checksum: 0,
+		}
+	}
+}
+
+impl Share {
+	/// Convert share data to a share mnemonic
+	pub fn to_mnemonic(&self, radix_bits: u8) -> Result<Vec<u8>, Error> {
+		let retval = vec![];
+		let padding_bit_count = radix_bits - (self.share_value.len() * 8 % radix_bits as usize) as u8;
+		println!("padding bit count: {}", padding_bit_count);
+		let mut bv: BitVec = BitVec::new();
+
+		Share::add_u16(&mut bv, self.identifier, 15)?;
+		Share::add_u8(&mut bv, self.iteration_exponent, 5)?;
+		Share::add_u8(&mut bv, self.group_index, 4)?;
+		Share::add_u8(&mut bv, self.group_threshold, 4)?;
+		Share::add_u8(&mut bv, self.group_count, 4)?;
+		Share::add_u8(&mut bv, self.member_index, 4)?;
+		Share::add_u8(&mut bv, self.member_threshold, 4)?;
+		Share::add_padding(&mut bv, padding_bit_count);
+		Share::add_vec_u8(&mut bv, &self.share_value)?;
+
+		println!("BV: {:?}", bv);
+		println!("bv.len(): {:?}", bv.len());
+
+		Ok(retval)
+	}
+
+	fn add_padding(bv: &mut BitVec, num_bits: u8) {
+		for _ in 0..num_bits {
+			bv.push(false);
+		}
+	}
+
+	fn add_vec_u8(bv: &mut BitVec, data: &Vec<u8>) -> Result<(), Error> {
+		for i in 0..data.len() {
+			Share::add_u8(bv, data[i], 8)?;
+		}
+		Ok(())
+	}
+
+	fn add_u16(bv: &mut BitVec, val: u16, num_bits: u8) -> Result<(), Error> {
+		if num_bits > 16 {
+			return Err(ErrorKind::BitVec(format!(
+				"number of bits to pack must be <= 16",
+			)))?;
+		}
+		for i in (0u8..num_bits).rev() {
+			if val & 2u16.pow(i as u32) == 0 {
+				bv.push(false);
+			} else {
+				bv.push(true);
+			}
+		}
+		Ok(())
+	}
+
+	fn add_u8(bv: &mut BitVec, val: u8, num_bits: u8) -> Result<(), Error> {
+		if num_bits > 8 {
+			return Err(ErrorKind::BitVec(format!(
+				"number of bits to pack must be <= 8",
+			)))?;
+		}
+		for i in (0u8..num_bits).rev() {
+			if val & 2u8.pow(i as u32) == 0 {
+				bv.push(false);
+			} else {
+				bv.push(true);
+			}
+		}
+		Ok(())
+	}
 }
 
 /// Main Struct
@@ -162,7 +278,8 @@ impl ShamirMnemonic {
 		if threshold == 1 {
 			shares.push(Share {
 				member_index: 1,
-				data: shared_secret.to_owned(),
+				share_value: shared_secret.to_owned(),
+				..Default::default()
 			});
 			return Ok(shares);
 		}
@@ -172,7 +289,8 @@ impl ShamirMnemonic {
 		for i in 0..random_share_count {
 			shares.push(Share {
 				member_index: i,
-				data: fill_vec_rand(shared_secret.len()),
+				share_value: fill_vec_rand(shared_secret.len()),
+				..Default::default()
 			});
 		}
 
@@ -184,12 +302,14 @@ impl ShamirMnemonic {
 		let mut base_shares = shares.clone();
 		base_shares.push(Share {
 			member_index: self.config.digest_index,
-			data: digest,
+			share_value: digest,
+			..Default::default()
 		});
 
 		base_shares.push(Share {
 			member_index: self.config.secret_index,
-			data: shared_secret.to_owned(),
+			share_value: shared_secret.to_owned(),
+			..Default::default()
 		});
 
 		for i in random_share_count..share_count {
@@ -218,15 +338,16 @@ impl ShamirMnemonic {
 				if s.member_index == x {
 					return Ok(Share {
 						member_index: x,
-						data: s.data.clone(),
+						share_value: s.share_value.clone(),
+						..Default::default()
 					});
 				}
 			}
 		}
 
-		let share_value_lengths = shares[0].data.len();
+		let share_value_lengths = shares[0].share_value.len();
 		for s in shares {
-			if s.data.len() != share_value_lengths {
+			if s.share_value.len() != share_value_lengths {
 				return Err(ErrorKind::Mneumonic(format!(
 					"Invalid set of shares. All share values must have the same length",
 				)))?;
@@ -235,7 +356,7 @@ impl ShamirMnemonic {
 
 		let mut ret_share = Share {
 			member_index: x,
-			data: vec![],
+			..Default::default()
 		};
 
 		for i in 0..share_value_lengths {
@@ -244,13 +365,13 @@ impl ShamirMnemonic {
 				.map(|s| {
 					(
 						Gf256::from_byte(s.member_index),
-						Gf256::from_byte(s.data[i]),
+						Gf256::from_byte(s.share_value[i]),
 					)
 				})
 				.collect();
 			let poly = lagrange::interpolate(&points);
 			let y = poly.evaluate_at(Gf256::from_byte(x));
-			ret_share.data.push(y.to_byte());
+			ret_share.share_value.push(y.to_byte());
 		}
 
 		Ok(ret_share)
@@ -268,9 +389,9 @@ impl ShamirMnemonic {
 
 	fn check_digest(&self, shares: &Vec<Share>, shared_secret: &Share) -> Result<(), Error> {
 		let digest_share = ShamirMnemonic::interpolate(shares, self.config.digest_index)?;
-		let mut digest = digest_share.data.clone();
+		let mut digest = digest_share.share_value.clone();
 		let random_part = digest.split_off(self.config.digest_length_bytes as usize);
-		if digest != self.create_digest(&random_part, &shared_secret.data) {
+		if digest != self.create_digest(&random_part, &shared_secret.share_value) {
 			return Err(ErrorKind::Digest(format!(
 				"Invalid digest of the shared secret",
 			)))?;
@@ -307,7 +428,7 @@ mod tests {
 		for _ in threshold..total_shares {
 			let recovered_secret = sm.recover_secret(&shares, threshold)?;
 			println!("Recovered secret is: {:?}", secret);
-			assert_eq!(secret, recovered_secret.data);
+			assert_eq!(secret, recovered_secret.share_value);
 			if threshold == 1 {
 				return Ok(());
 			}
@@ -348,6 +469,27 @@ mod tests {
 		// test a couple of nice long lengths
 		split_recover_impl(&sm, 2048, 3, 5)?;
 		split_recover_impl(&sm, 4096, 10, 16)?;
+		Ok(())
+	}
+
+	#[test]
+	fn share_to_mnemonic() -> Result<(), error::Error> {
+		// Test vectors taken from python reference implementation
+		let expected_res = "phantom branch academic axle ceramic alien domain alive \
+		deadline gray walnut spend echo amount squeeze woman squeeze welfare filter frequent";
+		let share = Share {
+			identifier: 21219,
+			iteration_exponent: 0,
+			group_index: 0,
+			group_threshold: 1,
+			group_count: 1,
+			member_index: 4,
+			member_threshold: 3,
+			share_value: b"\x84\x06\xce\xa0p\xbfe~\rA\x01\t5\xaf\xd3Z".to_vec(),
+			..Default::default()
+		};
+		let config = ShamirMnemonicConfig::default();
+		let res = share.to_mnemonic(config.radix_bits)?;
 		Ok(())
 	}
 }

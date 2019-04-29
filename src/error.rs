@@ -31,6 +31,9 @@ pub enum ErrorKind {
 	#[fail(display = "Digest Error: {}", _0)]
 	Digest(String),
 
+	#[fail(display = "BitVec Error: {}", _0)]
+	BitVec(String),
+
 	/// Other
 	#[fail(display = "Generic error: {}", _0)]
 	GenericError(String),
