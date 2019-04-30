@@ -9,6 +9,7 @@
 use crate::config::ShamirMnemonicConfig;
 use crate::error::{Error, ErrorKind};
 use crate::util::bitpacker::BitPacker;
+use crate::util::rs1024;
 
 use std::collections::HashMap;
 
@@ -96,27 +97,101 @@ impl Share {
 	}
 
 	/// Convert share data to a share mnemonic
-	pub fn to_mnemonic(&self, radix_bits: u8) -> Result<Vec<u8>, Error> {
-		let retval = vec![];
-		let padding_bit_count =
-			radix_bits - (self.share_value.len() * 8 % radix_bits as usize) as u8;
-		println!("padding bit count: {}", padding_bit_count);
-		let mut bv = BitPacker::new();
+	pub fn to_mnemonic(&self) -> Result<Vec<String>, Error> {
+		let padding_bit_count = self.config.radix_bits
+			- (self.share_value.len() * 8 % self.config.radix_bits as usize) as u8;
+		let mut bp = BitPacker::new();
 
-		bv.append_u16(self.identifier, 15)?;
-		bv.append_u8(self.iteration_exponent, 5)?;
-		bv.append_u8(self.group_index, 4)?;
-		bv.append_u8(self.group_threshold, 4)?;
-		bv.append_u8(self.group_count, 4)?;
-		bv.append_u8(self.member_index, 4)?;
-		bv.append_u8(self.member_threshold, 4)?;
-		bv.append_padding(padding_bit_count);
-		bv.append_vec_u8(&self.share_value)?;
+		bp.append_u16(self.identifier, 15)?;
+		bp.append_u8(self.iteration_exponent, 5)?;
+		bp.append_u8(self.group_index, 4)?;
+		bp.append_u8(self.group_threshold - 1, 4)?;
+		bp.append_u8(self.group_count - 1, 4)?;
+		bp.append_u8(self.member_index, 4)?;
+		bp.append_u8(self.member_threshold - 1, 4)?;
+		bp.append_padding(padding_bit_count);
+		bp.append_vec_u8(&self.share_value)?;
 
-		println!("BV: {:?}", bv);
-		println!("bv.len(): {:?}", bv.len());
+		if bp.len() % self.config.radix_bits as usize != 0 {
+			return Err(ErrorKind::Mneumonic(format!(
+				"Incorrect share bit length. Must be a multiple of {}, actual length: {}",
+				self.config.radix_bits,
+				bp.len(),
+			)))?;
+		}
 
-		Ok(retval)
+		// Create checksum
+		let mut sum_data: Vec<u32> = vec![];
+		for i in (0..bp.len()).step_by(self.config.radix_bits as usize) {
+			sum_data.push(bp.get_u32(i, self.config.radix_bits as usize)?);
+		}
+
+		let mut checksum = rs1024::create_checksum(
+			&self.config.customization_string,
+			&sum_data,
+			self.config.checksum_length_words,
+		);
+
+		sum_data.append(&mut checksum);
+
+		Ok(sum_data
+			.iter()
+			.map(|d| WORDLIST[*d as usize].to_owned())
+			.collect())
+	}
+
+	/// convert mnemonic back to share
+	pub fn from_mnemonic(config: &ShamirMnemonicConfig, mn: &Vec<String>) -> Result<Self, Error> {
+		if mn.len() < config.min_mnemonic_length_words as usize {
+			return Err(ErrorKind::Mneumonic(format!(
+				"Invalid mnemonic length. The length of each mnemonic muse be at least {} words.",
+				config.min_mnemonic_length_words,
+			)))?;
+		}
+		let mut bp = BitPacker::new();
+		for s in mn {
+			bp.append_u16(WORD_INDEX_MAP[s] as u16, config.radix_bits)?;
+		}
+
+		let mut sum_data: Vec<u32> = vec![];
+		for i in (0..bp.len()).step_by(config.radix_bits as usize) {
+			sum_data.push(bp.get_u32(i, config.radix_bits as usize)?);
+		}
+
+		if (config.radix_bits as usize * (sum_data.len() - config.metadata_length_words as usize))
+			% 16 > 8
+		{
+			return Err(ErrorKind::Mneumonic(format!("Invalid mnemonic length.",)))?;
+		}
+		rs1024::verify_checksum(&config.customization_string, &sum_data)?;
+
+		let mut ret_share = Share::new(config)?;
+
+		//TODO: iterator on bitpacker
+		ret_share.identifier = bp.get_u16(0, 15)?;
+		ret_share.iteration_exponent = bp.get_u8(15, 5)?;
+		ret_share.group_index = bp.get_u8(20, 4)?;
+		ret_share.group_threshold = bp.get_u8(24, 4)? + 1;
+		ret_share.group_count = bp.get_u8(28, 4)? + 1;
+		ret_share.member_index = bp.get_u8(32, 4)?;
+		ret_share.member_threshold = bp.get_u8(36, 4)? + 1;
+
+		if ret_share.group_count < ret_share.group_threshold {
+			return Err(ErrorKind::Mneumonic(format!(
+				"Invalid mnemonic. Group threshold cannot be greater than group count.",
+			)))?;
+		}
+
+		// remove padding and recover data
+		bp.split_out(
+			40,
+			bp.len() - config.radix_bits as usize * config.checksum_length_words as usize,
+		);
+		bp.remove_padding(bp.len() % 8);
+
+		ret_share.share_value = bp.get_vec_u8(0, bp.len() / 8)?;
+
+		Ok(ret_share)
 	}
 }
 
@@ -129,9 +204,28 @@ mod tests {
 	#[test]
 	fn share_to_mnemonic() -> Result<(), Error> {
 		// Test vectors taken from python reference implementation
-		let expected_res =
-			"phantom branch academic axle ceramic alien domain alive \
-			 deadline gray walnut spend echo amount squeeze woman squeeze welfare filter frequent";
+		let expected_res: Vec<String> = vec![
+			"phantom".into(),
+			"branch".into(),
+			"academic".into(),
+			"axle".into(),
+			"ceramic".into(),
+			"alien".into(),
+			"domain".into(),
+			"alive".into(),
+			"deadline".into(),
+			"gray".into(),
+			"walnut".into(),
+			"spend".into(),
+			"echo".into(),
+			"amount".into(),
+			"squeeze".into(),
+			"woman".into(),
+			"squeeze".into(),
+			"welfare".into(),
+			"filter".into(),
+			"frequent".into(),
+		];
 		let share = Share {
 			identifier: 21219,
 			iteration_exponent: 0,
@@ -143,7 +237,14 @@ mod tests {
 			share_value: b"\x84\x06\xce\xa0p\xbfe~\rA\x01\t5\xaf\xd3Z".to_vec(),
 			..Default::default()
 		};
-		let res = share.to_mnemonic(10)?;
+		println!("orig share: {:?}", share);
+		let m = share.to_mnemonic()?;
+		println!("m: {:?}", m);
+		assert_eq!(expected_res, m);
+
+		let dec_share = Share::from_mnemonic(&ShamirMnemonicConfig::new(), &m)?;
+		println!("decoded share: {:?}", dec_share);
+		assert_eq!(share, dec_share);
 		Ok(())
 	}
 }

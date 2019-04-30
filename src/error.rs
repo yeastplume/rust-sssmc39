@@ -34,6 +34,9 @@ pub enum ErrorKind {
 	#[fail(display = "BitVec Error: {}", _0)]
 	BitVec(String),
 
+	#[fail(display = "Checksum Validation Error: {}", _0)]
+	Checksum(String),
+
 	/// Other
 	#[fail(display = "Generic error: {}", _0)]
 	GenericError(String),
