@@ -14,3 +14,4 @@
 
 pub mod bitpacker;
 pub mod rs1024;
+pub mod encrypt;
