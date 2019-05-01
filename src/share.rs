@@ -141,7 +141,6 @@ impl Share {
 
 	/// Convert share data to a share mnemonic
 	pub fn to_mnemonic(&self) -> Result<Vec<String>, Error> {
-
 		let bp = self.pack_bits()?;
 
 		// Read bits as u32 vec

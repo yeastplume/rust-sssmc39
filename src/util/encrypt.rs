@@ -135,7 +135,7 @@ mod tests {
 	use rand::{thread_rng, Rng};
 
 	use crate::error::Error;
-	
+
 	fn enc_dec_test_impl(secret: Vec<u8>, passphrase: &str, identifier: u16) {
 		let enc = MasterSecretEnc::default();
 		println!("master_secret: {:?}", secret);
@@ -176,7 +176,6 @@ mod tests {
 			enc_dec_test_impl(s.to_vec(), "pebkac", id);
 		}
 
-		
 		Ok(())
 	}
 }

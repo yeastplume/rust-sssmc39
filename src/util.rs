@@ -13,5 +13,5 @@
 #![warn(missing_docs)]
 
 pub mod bitpacker;
-pub mod rs1024;
 pub mod encrypt;
+pub mod rs1024;

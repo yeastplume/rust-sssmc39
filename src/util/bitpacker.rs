@@ -48,7 +48,7 @@ impl BitPacker {
 		Ok(retvec)
 	}
 
-	/// Append first num_bits of a u32 to the bitvec. num_bits must be <= 32 
+	/// Append first num_bits of a u32 to the bitvec. num_bits must be <= 32
 	pub fn append_u32(&mut self, val: u32, num_bits: u8) -> Result<(), Error> {
 		if num_bits > 32 {
 			return Err(ErrorKind::BitVec(format!(

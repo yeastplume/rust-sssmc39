@@ -50,11 +50,14 @@ pub struct GroupShare {
 
 impl fmt::Display for GroupShare {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		writeln!(f, "Group {} of {} - {} of {} shares required: ", 
+		writeln!(
+			f,
+			"Group {} of {} - {} of {} shares required: ",
 			self.group_index + 1,
 			self.group_count,
 			self.member_threshold,
-			self.member_shares.len())?;
+			self.member_shares.len()
+		)?;
 		for s in &self.member_shares {
 			for w in s.to_mnemonic().unwrap() {
 				write!(f, "{} ", w)?;
@@ -177,24 +180,25 @@ impl ShamirMnemonic {
 
 	/// Split a master secret into mnemonic shares
 	/// group_threshold: The number of groups required to reconstruct the master secret
-	/// groups: A list of (member_threshold, member_count) pairs for each group, where member_count 
-	/// is the number of shares to generate for the group and member_threshold is the number of 
+	/// groups: A list of (member_threshold, member_count) pairs for each group, where member_count
+	/// is the number of shares to generate for the group and member_threshold is the number of
 	/// members required to reconstruct the group secret.
 	/// master_secret: The master secret to split.
 	/// passphrase: The passphrase used to encrypt the master secret.
 	/// iteration_exponent: The iteration exponent.
 	/// return: List of mnemonics.
-	pub fn generate_mnemonics(&self, 
+	pub fn generate_mnemonics(
+		&self,
 		group_threshold: u8,
 		groups: &Vec<(u8, u8)>,
 		master_secret: &Vec<u8>,
 		passphrase: &str,
-		iteration_exponent: u8) -> Result<Vec<GroupShare>, Error> {
-
+		iteration_exponent: u8,
+	) -> Result<Vec<GroupShare>, Error> {
 		let identifier = self.generate_random_identifier();
 
 		if master_secret.len() * 8 < self.config.min_strength_bits as usize {
-				return Err(ErrorKind::Value(format!(
+			return Err(ErrorKind::Value(format!(
 				"The length of the master secret ({} bytes) must be at least {} bytes.",
 				master_secret.len(),
 				(self.config.min_strength_bits as f64 / 8f64).ceil(),
@@ -202,13 +206,13 @@ impl ShamirMnemonic {
 		}
 
 		if master_secret.len() % 2 != 0 {
-				return Err(ErrorKind::Value(format!(
+			return Err(ErrorKind::Value(format!(
 				"The length of the master secret in bytes must be an even number",
 			)))?;
 		}
 
 		if group_threshold as usize > groups.len() {
-				return Err(ErrorKind::Value(format!(
+			return Err(ErrorKind::Value(format!(
 				"The requested group threshold ({}) must not exceed the number of groups ({}).",
 				group_threshold,
 				groups.len()
@@ -221,14 +225,16 @@ impl ShamirMnemonic {
 			&self.config.customization_string,
 		)?;
 
-		let encrypted_master_secret = encoder.encrypt(
-			master_secret,
-			passphrase,
-			iteration_exponent,
-			identifier);
+		let encrypted_master_secret =
+			encoder.encrypt(master_secret, passphrase, iteration_exponent, identifier);
 
-		let group_shares = self.split_secret(identifier, group_threshold, groups.len() as u8, &encrypted_master_secret)?;
-		
+		let group_shares = self.split_secret(
+			identifier,
+			group_threshold,
+			groups.len() as u8,
+			&encrypted_master_secret,
+		)?;
+
 		let mut retval: Vec<GroupShare> = vec![];
 
 		let gs_len = group_shares.len();
@@ -237,8 +243,14 @@ impl ShamirMnemonic {
 			elem.group_threshold = group_threshold;
 			elem.group_count = gs_len as u8;
 			let (member_threshold, member_count) = groups[i];
-			let member_shares = self.split_secret(identifier, member_threshold, member_count, &elem.share_value)?;
-			let member_shares = member_shares.into_iter()
+			let member_shares = self.split_secret(
+				identifier,
+				member_threshold,
+				member_count,
+				&elem.share_value,
+			)?;
+			let member_shares = member_shares
+				.into_iter()
 				.map(|s| {
 					let mut r = s.clone();
 					r.group_index = i as u8;
@@ -247,7 +259,7 @@ impl ShamirMnemonic {
 					r
 				})
 				.collect();
-			
+
 			retval.push(GroupShare {
 				group_id: identifier,
 				iteration_exponent: iteration_exponent,
@@ -261,7 +273,6 @@ impl ShamirMnemonic {
 
 		Ok(retval)
 	}
-
 
 	fn interpolate(&self, shares: &Vec<Share>, x: u8) -> Result<Share, Error> {
 		let x_coords: Vec<u8> = shares.iter().map(|s| s.member_index).collect();
@@ -333,7 +344,6 @@ impl ShamirMnemonic {
 		let retval: u16 = thread_rng().gen();
 		retval & ((1 << self.config.id_length_bits) - 1)
 	}
-
 }
 
 // fill a u8 vec with n bytes of random data
@@ -410,19 +420,13 @@ mod tests {
 	#[test]
 	fn generate_mnemonics() -> Result<(), error::Error> {
 		let sm = ShamirMnemonic::new(None);
-    let master_secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
-		let mns = sm.generate_mnemonics(
-			2,
-			&vec![(3, 5), (4, 5)],
-			&master_secret,
-			"",
-			0)?;
+		let master_secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
+		let mns = sm.generate_mnemonics(2, &vec![(3, 5), (4, 5)], &master_secret, "", 0)?;
 
 		for s in mns {
 			println!("{}", s);
 		}
 
 		Ok(())
-
 	}
 }
