@@ -7,14 +7,13 @@
 //! Master secret encryption
 use std::num::NonZeroU32;
 
-use crate::error::{Error, ErrorKind};
+use crate::error::Error;
 
 use ring::{digest, pbkdf2};
 
 /// Struct, so that config values are held
 pub struct MasterSecretEnc {
 	round_count: u8,
-	id_length_bits: u8,
 	min_iteration_count: u16,
 	customization_string: Vec<u8>,
 }
@@ -23,7 +22,6 @@ impl Default for MasterSecretEnc {
 	fn default() -> Self {
 		MasterSecretEnc {
 			round_count: 4,
-			id_length_bits: 15,
 			min_iteration_count: 10000,
 			customization_string: b"shamir".to_vec(),
 		}
@@ -34,13 +32,11 @@ impl MasterSecretEnc {
 	/// Create a new encoder with all defaults
 	pub fn new(
 		round_count: u8,
-		id_length_bits: u8,
 		min_iteration_count: u16,
 		customization_string: &Vec<u8>,
 	) -> Result<MasterSecretEnc, Error> {
 		Ok(MasterSecretEnc {
 			round_count,
-			id_length_bits,
 			min_iteration_count,
 			customization_string: customization_string.to_owned(),
 		})
@@ -143,9 +139,9 @@ mod tests {
 	fn enc_dec_test_impl(secret: Vec<u8>, passphrase: &str, identifier: u16) {
 		let enc = MasterSecretEnc::default();
 		println!("master_secret: {:?}", secret);
-		let encrypted_secret = enc.encrypt(&secret, "", 0, 7470);
+		let encrypted_secret = enc.encrypt(&secret, passphrase, 0, identifier);
 		println!("encrypted_secret: {:?}", encrypted_secret);
-		let decrypted_secret = enc.decrypt(&encrypted_secret, "", 0, 7470);
+		let decrypted_secret = enc.decrypt(&encrypted_secret, passphrase, 0, identifier);
 		println!("decrypted_secret: {:?}", decrypted_secret);
 		assert_eq!(secret, decrypted_secret);
 	}

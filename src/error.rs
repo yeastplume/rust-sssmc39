@@ -37,6 +37,9 @@ pub enum ErrorKind {
 	#[fail(display = "Checksum Validation Error: {}", _0)]
 	Checksum(String),
 
+	#[fail(display = "Value Error: {}", _0)]
+	Value(String),
+
 	/// Other
 	#[fail(display = "Generic error: {}", _0)]
 	GenericError(String),

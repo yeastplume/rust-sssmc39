@@ -96,8 +96,8 @@ impl Share {
 		})
 	}
 
-	/// Convert share data to a share mnemonic
-	pub fn to_mnemonic(&self) -> Result<Vec<String>, Error> {
+	// create the packed bit array
+	fn pack_bits(&self) -> Result<BitPacker, Error> {
 		let padding_bit_count = self.config.radix_bits
 			- (self.share_value.len() * 8 % self.config.radix_bits as usize) as u8;
 		let mut bp = BitPacker::new();
@@ -126,18 +126,49 @@ impl Share {
 			sum_data.push(bp.get_u32(i, self.config.radix_bits as usize)?);
 		}
 
-		let mut checksum = rs1024::create_checksum(
+		let checksum = rs1024::create_checksum(
 			&self.config.customization_string,
 			&sum_data,
 			self.config.checksum_length_words,
 		);
 
-		sum_data.append(&mut checksum);
+		for c in checksum {
+			bp.append_u32(c, self.config.radix_bits)?;
+		}
 
-		Ok(sum_data
+		Ok(bp)
+	}
+
+	/// Convert share data to a share mnemonic
+	pub fn to_mnemonic(&self) -> Result<Vec<String>, Error> {
+
+		let bp = self.pack_bits()?;
+
+		// Read bits as u32 vec
+		let mut ret_vec: Vec<u32> = vec![];
+		for i in (0..bp.len()).step_by(self.config.radix_bits as usize) {
+			ret_vec.push(bp.get_u32(i, self.config.radix_bits as usize)?);
+		}
+
+		Ok(ret_vec
 			.iter()
 			.map(|d| WORDLIST[*d as usize].to_owned())
 			.collect())
+	}
+
+	/// Convert share data to u8 vec
+	pub fn to_u8_vec(&self) -> Result<Vec<u8>, Error> {
+		println!("{:?}", self);
+
+		let bp = self.pack_bits()?;
+
+		// Read bits as u8 vec
+		let mut ret_vec: Vec<u8> = vec![];
+		for i in (0..bp.len()).step_by(8) {
+			ret_vec.push(bp.get_u8(i, 8)?);
+		}
+
+		Ok(ret_vec)
 	}
 
 	/// convert mnemonic back to share
