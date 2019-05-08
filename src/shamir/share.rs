@@ -53,6 +53,8 @@ pub struct ShareConfig {
 	pub min_mnemonic_length_words: u8,
 	/// The length of the iteration exponent in bits
 	pub iteration_exp_length_bits: u8,
+	/// The minimum allowed entropy of the master secret
+	pub min_strength_bits: u16,
 }
 
 impl Default for ShareConfig {
@@ -80,6 +82,7 @@ impl Default for ShareConfig {
 			metadata_length_words,
 			min_mnemonic_length_words,
 			iteration_exp_length_bits,
+			min_strength_bits,
 		}
 	}
 }

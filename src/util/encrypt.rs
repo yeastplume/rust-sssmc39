@@ -19,34 +19,57 @@ use crate::error::Error;
 
 use ring::{digest, pbkdf2};
 
+/// Config Struct
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MasterSecretEncConfig {
+	/// The minimum number of iterations to use in PBKDF2
+	pub min_iteration_count: u16,
+	/// The number of rounds to use in the Feistel cipher
+	pub round_count: u8,
+	/// The customization string used in the RS1024 checksum and in the PBKDF2 salt
+	pub customization_string: Vec<u8>,
+}
+
+impl Default for MasterSecretEncConfig {
+	fn default() -> Self {
+		let min_iteration_count = 10000;
+		let round_count = 4;
+		let customization_string = b"shamir".to_vec();
+
+		MasterSecretEncConfig {
+			min_iteration_count,
+			round_count,
+			customization_string,
+		}
+	}
+}
+
+impl MasterSecretEncConfig {
+	/// Just use defaults for now
+	pub fn new() -> Self {
+		MasterSecretEncConfig {
+			..Default::default()
+		}
+	}
+}
 /// Struct, so that config values are held
 pub struct MasterSecretEnc {
-	round_count: u8,
-	min_iteration_count: u16,
-	customization_string: Vec<u8>,
+	pub config: MasterSecretEncConfig,
 }
 
 impl Default for MasterSecretEnc {
 	fn default() -> Self {
 		MasterSecretEnc {
-			round_count: 4,
-			min_iteration_count: 10000,
-			customization_string: b"shamir".to_vec(),
+			config: MasterSecretEncConfig::new(),
 		}
 	}
 }
 
 impl MasterSecretEnc {
 	/// Create a new encoder with all defaults
-	pub fn new(
-		round_count: u8,
-		min_iteration_count: u16,
-		customization_string: &Vec<u8>,
-	) -> Result<MasterSecretEnc, Error> {
+	pub fn new() -> Result<MasterSecretEnc, Error> {
 		Ok(MasterSecretEnc {
-			round_count,
-			min_iteration_count,
-			customization_string: customization_string.to_owned(),
+			config: MasterSecretEncConfig::new(),
 		})
 	}
 
@@ -60,7 +83,7 @@ impl MasterSecretEnc {
 		let mut l = master_secret.to_owned();
 		let mut r = l.split_off(l.len() / 2);
 		let salt = self.get_salt(identifier);
-		for i in 0..self.round_count {
+		for i in 0..self.config.round_count {
 			let tmp_r = r.clone();
 			r = self.xor(
 				&l,
@@ -82,7 +105,7 @@ impl MasterSecretEnc {
 		let mut l = enc_master_secret.to_owned();
 		let mut r = l.split_off(l.len() / 2);
 		let salt = self.get_salt(identifier);
-		for i in (0..self.round_count).rev() {
+		for i in (0..self.config.round_count).rev() {
 			let tmp_r = r.clone();
 			r = self.xor(
 				&l,
@@ -95,7 +118,7 @@ impl MasterSecretEnc {
 	}
 
 	fn get_salt(&self, identifier: u16) -> Vec<u8> {
-		let mut retval = self.customization_string.clone();
+		let mut retval = self.config.customization_string.clone();
 		retval.append(&mut identifier.to_be_bytes().to_vec());
 		retval
 	}
@@ -109,7 +132,7 @@ impl MasterSecretEnc {
 		salt: &Vec<u8>,
 		r: &Vec<u8>,
 	) -> Vec<u8> {
-		let iterations = (self.min_iteration_count << e) / self.round_count as u16;
+		let iterations = (self.config.min_iteration_count << e) / self.config.round_count as u16;
 		let out_length = r.len();
 		let mut salt = salt.clone();
 		let mut r = r.clone();

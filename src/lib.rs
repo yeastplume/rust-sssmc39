@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod config;
 mod error;
 mod field;
 mod shamir;
@@ -22,8 +21,6 @@ mod util;
 extern crate lazy_static;
 
 use error::{Error, ErrorKind};
-
-use config::ShamirMnemonicConfig;
 use shamir::{Share, Splitter};
 
 use std::fmt;
@@ -67,113 +64,90 @@ impl fmt::Display for GroupShare {
 	}
 }
 
-/// Main Struct
-pub struct ShamirMnemonic {
-	/// Configuration values
-	config: ShamirMnemonicConfig,
-}
+/// Split a master secret into mnemonic shares
+/// group_threshold: The number of groups required to reconstruct the master secret
+/// groups: A list of (member_threshold, member_count) pairs for each group, where member_count
+/// is the number of shares to generate for the group and member_threshold is the number of
+/// members required to reconstruct the group secret.
+/// master_secret: The master secret to split.
+/// passphrase: The passphrase used to encrypt the master secret.
+/// iteration_exponent: The iteration exponent.
+/// return: List of mnemonics.
+pub fn generate_mnemonics(
+	group_threshold: u8,
+	groups: &Vec<(u8, u8)>,
+	master_secret: &Vec<u8>,
+	passphrase: &str,
+	iteration_exponent: u8,
+) -> Result<Vec<GroupShare>, Error> {
+	// Generate a 'proto share' so to speak, with identifer generated and group data filled
+	let mut proto_share = Share::new()?;
+	proto_share.group_threshold = group_threshold;
+	proto_share.group_count = groups.len() as u8;
 
-impl ShamirMnemonic {
-	/// Create new
-	pub fn new(config: Option<&ShamirMnemonicConfig>) -> ShamirMnemonic {
-		ShamirMnemonic {
-			config: match config {
-				Some(c) => c.to_owned(),
-				None => ShamirMnemonicConfig::new(),
-			},
-		}
+	if master_secret.len() * 8 < proto_share.config.min_strength_bits as usize {
+		return Err(ErrorKind::Value(format!(
+			"The length of the master secret ({} bytes) must be at least {} bytes.",
+			master_secret.len(),
+			(proto_share.config.min_strength_bits as f64 / 8f64).ceil(),
+		)))?;
 	}
 
-	/// Split a master secret into mnemonic shares
-	/// group_threshold: The number of groups required to reconstruct the master secret
-	/// groups: A list of (member_threshold, member_count) pairs for each group, where member_count
-	/// is the number of shares to generate for the group and member_threshold is the number of
-	/// members required to reconstruct the group secret.
-	/// master_secret: The master secret to split.
-	/// passphrase: The passphrase used to encrypt the master secret.
-	/// iteration_exponent: The iteration exponent.
-	/// return: List of mnemonics.
-	pub fn generate_mnemonics(
-		&self,
-		group_threshold: u8,
-		groups: &Vec<(u8, u8)>,
-		master_secret: &Vec<u8>,
-		passphrase: &str,
-		iteration_exponent: u8,
-	) -> Result<Vec<GroupShare>, Error> {
-		if master_secret.len() * 8 < self.config.min_strength_bits as usize {
-			return Err(ErrorKind::Value(format!(
-				"The length of the master secret ({} bytes) must be at least {} bytes.",
-				master_secret.len(),
-				(self.config.min_strength_bits as f64 / 8f64).ceil(),
-			)))?;
-		}
+	if master_secret.len() % 2 != 0 {
+		return Err(ErrorKind::Value(format!(
+			"The length of the master secret in bytes must be an even number",
+		)))?;
+	}
 
-		if master_secret.len() % 2 != 0 {
-			return Err(ErrorKind::Value(format!(
-				"The length of the master secret in bytes must be an even number",
-			)))?;
-		}
-
-		if group_threshold as usize > groups.len() {
-			return Err(ErrorKind::Value(format!(
-				"The requested group threshold ({}) must not exceed the number of groups ({}).",
-				group_threshold,
-				groups.len()
-			)))?;
-		}
-
-		let encoder = util::encrypt::MasterSecretEnc::new(
-			self.config.round_count,
-			self.config.min_iteration_count,
-			&self.config.customization_string,
-		)?;
-
-		// Generate a 'proto share' so to speak, with identifer generated and group data filled
-		let mut proto_share = Share::new()?;
-		proto_share.group_threshold = group_threshold;
-		proto_share.group_count = groups.len() as u8;
-
-		let encrypted_master_secret = encoder.encrypt(
-			master_secret,
-			passphrase,
-			iteration_exponent,
-			proto_share.identifier,
-		);
-
-		let sp = Splitter::new(None);
-
-		let group_shares = sp.split_secret(
-			&proto_share,
+	if group_threshold as usize > groups.len() {
+		return Err(ErrorKind::Value(format!(
+			"The requested group threshold ({}) must not exceed the number of groups ({}).",
 			group_threshold,
-			groups.len() as u8,
-			&encrypted_master_secret,
-		)?;
-
-		let mut retval: Vec<GroupShare> = vec![];
-
-		let gs_len = group_shares.len();
-		for (i, mut elem) in group_shares.into_iter().enumerate() {
-			elem.group_index = i as u8;
-			elem.group_threshold = group_threshold;
-			elem.group_count = gs_len as u8;
-			let (member_threshold, member_count) = groups[i];
-			let member_shares =
-				sp.split_secret(&elem, member_threshold, member_count, &elem.share_value)?;
-
-			retval.push(GroupShare {
-				group_id: proto_share.identifier,
-				iteration_exponent: iteration_exponent,
-				group_index: i as u8,
-				group_threshold: group_threshold,
-				group_count: gs_len as u8,
-				member_threshold: member_threshold,
-				member_shares,
-			});
-		}
-
-		Ok(retval)
+			groups.len()
+		)))?;
 	}
+
+	let encoder = util::encrypt::MasterSecretEnc::new()?;
+
+	let encrypted_master_secret = encoder.encrypt(
+		master_secret,
+		passphrase,
+		iteration_exponent,
+		proto_share.identifier,
+	);
+
+	let sp = Splitter::new(None);
+
+	let group_shares = sp.split_secret(
+		&proto_share,
+		group_threshold,
+		groups.len() as u8,
+		&encrypted_master_secret,
+	)?;
+
+	let mut retval: Vec<GroupShare> = vec![];
+
+	let gs_len = group_shares.len();
+	for (i, mut elem) in group_shares.into_iter().enumerate() {
+		elem.group_index = i as u8;
+		elem.group_threshold = group_threshold;
+		elem.group_count = gs_len as u8;
+		let (member_threshold, member_count) = groups[i];
+		let member_shares =
+			sp.split_secret(&elem, member_threshold, member_count, &elem.share_value)?;
+
+		retval.push(GroupShare {
+			group_id: proto_share.identifier,
+			iteration_exponent: iteration_exponent,
+			group_index: i as u8,
+			group_threshold: group_threshold,
+			group_count: gs_len as u8,
+			member_threshold: member_threshold,
+			member_shares,
+		});
+	}
+
+	Ok(retval)
 }
 
 #[cfg(test)]
@@ -181,11 +155,10 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn generate_mnemonics() -> Result<(), error::Error> {
-		let sm = ShamirMnemonic::new(None);
+	fn generate_mnemonics_test() -> Result<(), error::Error> {
 		let master_secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
 		let mns =
-			sm.generate_mnemonics(2, &vec![(2, 2), (3, 5), (6, 10)], &master_secret, "", 0)?;
+			generate_mnemonics(2, &vec![(2, 2), (3, 5), (6, 10)], &master_secret, "", 0)?;
 
 		for s in mns {
 			println!("{}", s);
