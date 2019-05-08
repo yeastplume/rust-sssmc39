@@ -76,7 +76,8 @@ fn _barycentric_interpolate_at(k: usize, points: &[(u8, u8)]) -> u8 {
 			let delta = x[j] - x[i];
 			assert_ne!(delta.poly, 0, "Duplicate shares");
 			w[j] /= delta;
-			w[i] -= w[j];
+			let n = w[j];
+			w[i] -= n;
 		}
 	}
 

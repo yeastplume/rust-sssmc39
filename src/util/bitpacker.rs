@@ -26,6 +26,13 @@ pub struct BitPacker {
 	bv: BitVec,
 }
 
+//TODO:
+// * Works, but:
+// * Faster
+// * Generics
+// * Iterator for reading values
+//
+
 impl BitPacker {
 	/// Create a new bitpacker
 	pub fn new() -> Self {
