@@ -24,7 +24,7 @@ use std::collections::HashMap;
 
 lazy_static! {
 	/// List of ssmc words
-	pub static ref WORDLIST: Vec<String> = { include_str!("../wordlists/en.txt").split_whitespace().map(|s| s.into()).collect() };
+	pub static ref WORDLIST: Vec<String> = { include_str!("wordlists/en.txt").split_whitespace().map(|s| s.into()).collect() };
 	pub static ref WORD_INDEX_MAP: HashMap<String, usize> = {
 		let mut retval = HashMap::new();
 		for (i, item) in WORDLIST.iter().enumerate() {
