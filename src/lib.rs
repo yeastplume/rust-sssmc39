@@ -101,7 +101,6 @@ impl ShamirMnemonic {
 		passphrase: &str,
 		iteration_exponent: u8,
 	) -> Result<Vec<GroupShare>, Error> {
-
 		if master_secret.len() * 8 < self.config.min_strength_bits as usize {
 			return Err(ErrorKind::Value(format!(
 				"The length of the master secret ({} bytes) must be at least {} bytes.",
@@ -135,8 +134,12 @@ impl ShamirMnemonic {
 		proto_share.group_threshold = group_threshold;
 		proto_share.group_count = groups.len() as u8;
 
-		let encrypted_master_secret =
-			encoder.encrypt(master_secret, passphrase, iteration_exponent, proto_share.identifier);
+		let encrypted_master_secret = encoder.encrypt(
+			master_secret,
+			passphrase,
+			iteration_exponent,
+			proto_share.identifier,
+		);
 
 		let sp = Splitter::new(None);
 
@@ -155,12 +158,8 @@ impl ShamirMnemonic {
 			elem.group_threshold = group_threshold;
 			elem.group_count = gs_len as u8;
 			let (member_threshold, member_count) = groups[i];
-			let member_shares = sp.split_secret(
-				&elem,
-				member_threshold,
-				member_count,
-				&elem.share_value,
-			)?;
+			let member_shares =
+				sp.split_secret(&elem, member_threshold, member_count, &elem.share_value)?;
 
 			retval.push(GroupShare {
 				group_id: proto_share.identifier,
@@ -185,7 +184,8 @@ mod tests {
 	fn generate_mnemonics() -> Result<(), error::Error> {
 		let sm = ShamirMnemonic::new(None);
 		let master_secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
-		let mns = sm.generate_mnemonics(2, &vec![(2, 2), (3, 5), (6, 10)], &master_secret, "", 0)?;
+		let mns =
+			sm.generate_mnemonics(2, &vec![(2, 2), (3, 5), (6, 10)], &master_secret, "", 0)?;
 
 		for s in mns {
 			println!("{}", s);

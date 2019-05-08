@@ -19,8 +19,8 @@ use crate::error::{Error, ErrorKind};
 use crate::util::bitpacker::BitPacker;
 use crate::util::rs1024;
 
-use std::collections::HashMap;
 use rand::{thread_rng, Rng};
+use std::collections::HashMap;
 
 lazy_static! {
 	/// List of ssmc words
@@ -176,7 +176,10 @@ impl Share {
 		let mut bp = BitPacker::new();
 
 		bp.append_u16(self.identifier, self.config.id_length_bits)?;
-		bp.append_u8(self.iteration_exponent, self.config.iteration_exp_length_bits)?;
+		bp.append_u8(
+			self.iteration_exponent,
+			self.config.iteration_exp_length_bits,
+		)?;
 		bp.append_u8(self.group_index, 4)?;
 		bp.append_u8(self.group_threshold - 1, 4)?;
 		bp.append_u8(self.group_count - 1, 4)?;
@@ -261,7 +264,8 @@ impl Share {
 			sum_data.push(bp.get_u32(i, self.config.radix_bits as usize)?);
 		}
 
-		if (self.config.radix_bits as usize * (sum_data.len() - self.config.metadata_length_words as usize))
+		if (self.config.radix_bits as usize
+			* (sum_data.len() - self.config.metadata_length_words as usize))
 			% 16 > 8
 		{
 			return Err(ErrorKind::Mneumonic(format!("Invalid mnemonic length.",)))?;
@@ -272,8 +276,14 @@ impl Share {
 
 		//TODO: iterator on bitpacker
 		ret_share.identifier = bp.get_u16(0, self.config.id_length_bits as usize)?;
-		ret_share.iteration_exponent = bp.get_u8(self.config.id_length_bits as usize, self.config.iteration_exp_length_bits as usize)?;
-		ret_share.group_index = bp.get_u8((self.config.id_length_bits + self.config.iteration_exp_length_bits) as usize, 4)?;
+		ret_share.iteration_exponent = bp.get_u8(
+			self.config.id_length_bits as usize,
+			self.config.iteration_exp_length_bits as usize,
+		)?;
+		ret_share.group_index = bp.get_u8(
+			(self.config.id_length_bits + self.config.iteration_exp_length_bits) as usize,
+			4,
+		)?;
 		ret_share.group_threshold = bp.get_u8(24, 4)? + 1;
 		ret_share.group_count = bp.get_u8(28, 4)? + 1;
 		ret_share.member_index = bp.get_u8(32, 4)?;

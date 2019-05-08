@@ -165,9 +165,7 @@ impl Splitter {
 	/// recover a secret
 	pub fn recover_secret(&self, shares: &Vec<Share>, threshold: u8) -> Result<Share, Error> {
 		if shares.len() == 0 {
-			return Err(ErrorKind::Value(format!(
-				"Share set must not be empty.",
-			)))?;
+			return Err(ErrorKind::Value(format!("Share set must not be empty.",)))?;
 		}
 		let mut proto_share = shares[0].clone();
 		proto_share.share_value = vec![];
@@ -234,7 +232,12 @@ impl Splitter {
 		ret_vec
 	}
 
-	fn check_digest(&self, shares: &Vec<Share>, shared_secret: &Share, proto_share: &Share) -> Result<(), Error> {
+	fn check_digest(
+		&self,
+		shares: &Vec<Share>,
+		shared_secret: &Share,
+		proto_share: &Share,
+	) -> Result<(), Error> {
 		let digest_share = self.interpolate(shares, self.config.digest_index, proto_share)?;
 		let mut digest = digest_share.share_value.clone();
 		let random_part = digest.split_off(self.config.digest_length_bytes as usize);
@@ -303,7 +306,7 @@ mod tests {
 		assert!(split_recover_impl(16, 5, 0).is_err());
 		// test a range of thresholds
 		let config = SplitterConfig::new();
-		for sc in 1..= config.max_share_count {
+		for sc in 1..=config.max_share_count {
 			for t in 1..=sc {
 				split_recover_impl(16, t, sc)?;
 			}
