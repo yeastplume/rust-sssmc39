@@ -3,9 +3,31 @@
 
 "Hold my vodka" *-Yeastplume*
 
+This is a currently very work-in-progress Rust implementation of [SLIP-0039: Shamir's Secret Sharing for Mnemonic Codes](https://github.com/satoshilabs/slips/blob/master/slip-0039.md). It is being developed for eventual incorpration into [Grin's Wallet](https://github.com/mimblewimble/grin-wallet), however I hope it can be of use to anyone looking to implement a master-secret sharing scheme. The specification doesn't just operate on BIP-39 Mnemonics, but can also split keys of almost any size, so it should be useful for a wide variety of needs.
+
+As stated, this is an untested work-in-progess, so use at your own risk.
+
+## Status
+
+* Field arithmetic, underlying encryption and RS1024 code in place.
+* Share splitting, conversion of share to Mnemonic and back in place.
+* Main master secret to group mnemonics in place (see test in `src/lib.rs`)
+
+## Still Outstanding
+
+* Share recovery
+* Tightening of certain areas of code (check TODOS)
+* More testing and incorporate test vectors from original reference implementation (see below)
+* API shaping
+* Documentation
+* Continuous Integration
+* Community reviews and Some level of code audit
+* Publishing
 
 ## Credits
 
-Portions of the code taken from [Rusty Secrets](https://github.com/SpinResearch/RustySecrets), with license details in all derived source files.
+The code was put together using the [SLIP-0039 Python Reference Implementation](https://github.com/trezor/python-shamir-mnemonic/) as a reference
+
+Field arithmetic code taken with thanks and respect from [Rusty Secrets](https://github.com/SpinResearch/RustySecrets), with license details in all derived source files.
 
 Rusty Secrets was forked off [sellibitze's secretshare.](https://github.com/sellibitze/secretshare)

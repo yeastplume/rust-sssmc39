@@ -1,6 +1,6 @@
 [package]
 name = "sssmc39"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Yeastplume <yeastplume@protonmail.com>"]
 edition = "2018"
 
