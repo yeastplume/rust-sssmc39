@@ -1,21 +1,30 @@
-// Copyright 2019 ???
+// Copyright 2019 The Grin Developers
 //
-// TODO: LICENSE TEXT
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 //! Definition of a share, as well as functions to
 //! convert it to and from a given wordlist
 
-use crate::config::ShamirMnemonicConfig;
 use crate::error::{Error, ErrorKind};
 use crate::util::bitpacker::BitPacker;
 use crate::util::rs1024;
 
 use std::collections::HashMap;
+use rand::{thread_rng, Rng};
 
 lazy_static! {
 	/// List of ssmc words
-	pub static ref WORDLIST: Vec<String> = { include_str!("wordlists/en.txt").split_whitespace().map(|s| s.into()).collect() };
+	pub static ref WORDLIST: Vec<String> = { include_str!("../wordlists/en.txt").split_whitespace().map(|s| s.into()).collect() };
 	pub static ref WORD_INDEX_MAP: HashMap<String, usize> = {
 		let mut retval = HashMap::new();
 		for (i, item) in WORDLIST.iter().enumerate() {
@@ -23,6 +32,65 @@ lazy_static! {
 		}
 		retval
 	};
+}
+
+/// Share-specific configuration values
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShareConfig {
+	/// The length of the random Identifier in bits
+	pub id_length_bits: u8,
+	/// The number of words in the word list
+	pub radix: u16,
+	/// The length of the radix in bits
+	pub radix_bits: u8,
+	/// The customization string used in the RS1024 checksum and in the PBKDF2 salt
+	pub customization_string: Vec<u8>,
+	/// The length of the RS1024 checksum in words
+	pub checksum_length_words: u8,
+	/// The length of mnemonic is words without the share value
+	pub metadata_length_words: u8,
+	/// The minimum allowed length of the mnemonic in words
+	pub min_mnemonic_length_words: u8,
+	/// The length of the iteration exponent in bits
+	pub iteration_exp_length_bits: u8,
+}
+
+impl Default for ShareConfig {
+	fn default() -> Self {
+		let radix_bits = 10;
+		let id_length_bits = 15;
+		let iteration_exp_length_bits = 5;
+		let checksum_length_words = 3;
+		let customization_string = b"shamir".to_vec();
+		let min_strength_bits = 128;
+
+		// derived values
+		let radix = 2u16.pow(radix_bits as u32);
+		let id_exp_length_words = (id_length_bits + iteration_exp_length_bits) / radix_bits;
+		let metadata_length_words = id_exp_length_words + 2 + checksum_length_words;
+		let min_mnemonic_length_words =
+			metadata_length_words + (min_strength_bits as f64 / 10f64).ceil() as u8;
+
+		ShareConfig {
+			id_length_bits,
+			radix,
+			radix_bits,
+			customization_string,
+			checksum_length_words,
+			metadata_length_words,
+			min_mnemonic_length_words,
+			iteration_exp_length_bits,
+		}
+	}
+}
+
+impl ShareConfig {
+	/// Just use defaults for now
+	pub fn new() -> Self {
+		ShareConfig {
+			..Default::default()
+		}
+	}
 }
 
 /// Main definition of a share and its mneumonic serialization
@@ -60,7 +128,7 @@ pub struct Share {
 	/// RS1024 is "shamir". (30 bits)
 	pub checksum: u32,
 	/// configuration values
-	config: ShamirMnemonicConfig,
+	pub config: ShareConfig,
 }
 
 impl Default for Share {
@@ -75,25 +143,30 @@ impl Default for Share {
 			member_threshold: 0,
 			share_value: vec![],
 			checksum: 0,
-			config: ShamirMnemonicConfig::new(),
+			config: ShareConfig::new(),
 		}
 	}
 }
 
 impl Share {
 	/// Create a new share with defaults
-	pub fn new(config: &ShamirMnemonicConfig) -> Result<Share, Error> {
-		if WORDLIST.len() != config.radix as usize {
+	pub fn new() -> Result<Share, Error> {
+		let mut s = Share::default();
+		s.identifier = s.generate_random_identifier();
+		if WORDLIST.len() != s.config.radix as usize {
 			return Err(ErrorKind::Config(format!(
 				"The wordlist should contain {} words, but it contains {} words.",
-				config.radix,
+				s.config.radix,
 				WORDLIST.len()
 			)))?;
 		}
-		Ok(Share {
-			config: config.to_owned(),
-			..Default::default()
-		})
+		Ok(s)
+	}
+
+	/// convenience to create new from Mneumonic
+	pub fn from_mnemonic(mn: &Vec<String>) -> Result<Self, Error> {
+		let s = Share::new()?;
+		s.from_mnemonic_impl(mn)
 	}
 
 	// create the packed bit array
@@ -102,8 +175,8 @@ impl Share {
 			- (self.share_value.len() * 8 % self.config.radix_bits as usize) as u8;
 		let mut bp = BitPacker::new();
 
-		bp.append_u16(self.identifier, 15)?;
-		bp.append_u8(self.iteration_exponent, 5)?;
+		bp.append_u16(self.identifier, self.config.id_length_bits)?;
+		bp.append_u8(self.iteration_exponent, self.config.iteration_exp_length_bits)?;
 		bp.append_u8(self.group_index, 4)?;
 		bp.append_u8(self.group_threshold - 1, 4)?;
 		bp.append_u8(self.group_count - 1, 4)?;
@@ -171,36 +244,36 @@ impl Share {
 	}
 
 	/// convert mnemonic back to share
-	pub fn from_mnemonic(config: &ShamirMnemonicConfig, mn: &Vec<String>) -> Result<Self, Error> {
-		if mn.len() < config.min_mnemonic_length_words as usize {
+	fn from_mnemonic_impl(&self, mn: &Vec<String>) -> Result<Self, Error> {
+		if mn.len() < self.config.min_mnemonic_length_words as usize {
 			return Err(ErrorKind::Mneumonic(format!(
 				"Invalid mnemonic length. The length of each mnemonic muse be at least {} words.",
-				config.min_mnemonic_length_words,
+				self.config.min_mnemonic_length_words,
 			)))?;
 		}
 		let mut bp = BitPacker::new();
 		for s in mn {
-			bp.append_u16(WORD_INDEX_MAP[s] as u16, config.radix_bits)?;
+			bp.append_u16(WORD_INDEX_MAP[s] as u16, self.config.radix_bits)?;
 		}
 
 		let mut sum_data: Vec<u32> = vec![];
-		for i in (0..bp.len()).step_by(config.radix_bits as usize) {
-			sum_data.push(bp.get_u32(i, config.radix_bits as usize)?);
+		for i in (0..bp.len()).step_by(self.config.radix_bits as usize) {
+			sum_data.push(bp.get_u32(i, self.config.radix_bits as usize)?);
 		}
 
-		if (config.radix_bits as usize * (sum_data.len() - config.metadata_length_words as usize))
+		if (self.config.radix_bits as usize * (sum_data.len() - self.config.metadata_length_words as usize))
 			% 16 > 8
 		{
 			return Err(ErrorKind::Mneumonic(format!("Invalid mnemonic length.",)))?;
 		}
-		rs1024::verify_checksum(&config.customization_string, &sum_data)?;
+		rs1024::verify_checksum(&self.config.customization_string, &sum_data)?;
 
-		let mut ret_share = Share::new(config)?;
+		let mut ret_share = Share::new()?;
 
 		//TODO: iterator on bitpacker
-		ret_share.identifier = bp.get_u16(0, 15)?;
-		ret_share.iteration_exponent = bp.get_u8(15, 5)?;
-		ret_share.group_index = bp.get_u8(20, 4)?;
+		ret_share.identifier = bp.get_u16(0, self.config.id_length_bits as usize)?;
+		ret_share.iteration_exponent = bp.get_u8(self.config.id_length_bits as usize, self.config.iteration_exp_length_bits as usize)?;
+		ret_share.group_index = bp.get_u8((self.config.id_length_bits + self.config.iteration_exp_length_bits) as usize, 4)?;
 		ret_share.group_threshold = bp.get_u8(24, 4)? + 1;
 		ret_share.group_count = bp.get_u8(28, 4)? + 1;
 		ret_share.member_index = bp.get_u8(32, 4)?;
@@ -215,13 +288,18 @@ impl Share {
 		// remove padding and recover data
 		bp.split_out(
 			40,
-			bp.len() - config.radix_bits as usize * config.checksum_length_words as usize,
+			bp.len() - self.config.radix_bits as usize * self.config.checksum_length_words as usize,
 		);
 		bp.remove_padding(bp.len() % 8);
 
 		ret_share.share_value = bp.get_vec_u8(0, bp.len() / 8)?;
 
 		Ok(ret_share)
+	}
+
+	fn generate_random_identifier(&self) -> u16 {
+		let retval: u16 = thread_rng().gen();
+		retval & ((1 << self.config.id_length_bits) - 1)
 	}
 }
 
@@ -272,7 +350,7 @@ mod tests {
 		println!("m: {:?}", m);
 		assert_eq!(expected_res, m);
 
-		let dec_share = Share::from_mnemonic(&ShamirMnemonicConfig::new(), &m)?;
+		let dec_share = Share::from_mnemonic(&m)?;
 		println!("decoded share: {:?}", dec_share);
 		assert_eq!(share, dec_share);
 		Ok(())

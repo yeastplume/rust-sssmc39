@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! cryptography and utility functions
+//! lower-level wallet functions which build upon core::libtx to perform wallet
+//! operations
 
 #![deny(non_upper_case_globals)]
 #![deny(non_camel_case_types)]
@@ -20,6 +21,8 @@
 #![deny(unused_mut)]
 #![warn(missing_docs)]
 
-pub mod bitpacker;
-pub mod encrypt;
-pub mod rs1024;
+mod share;
+mod splitter;
+
+pub use share::Share;
+pub use splitter::Splitter;
