@@ -157,8 +157,7 @@ mod tests {
 	#[test]
 	fn generate_mnemonics_test() -> Result<(), error::Error> {
 		let master_secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
-		let mns =
-			generate_mnemonics(2, &vec![(2, 2), (3, 5), (6, 10)], &master_secret, "", 0)?;
+		let mns = generate_mnemonics(2, &vec![(2, 2), (3, 5), (6, 10)], &master_secret, "", 0)?;
 
 		for s in mns {
 			println!("{}", s);
