@@ -24,6 +24,7 @@ use error::{Error, ErrorKind};
 use shamir::{Share, Splitter};
 
 use std::fmt;
+use std::collections::BTreeMap;
 
 /// Struct for returned shares
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +45,20 @@ pub struct GroupShare {
 	pub member_shares: Vec<Share>,
 }
 
+impl Default for GroupShare {
+	fn default() -> Self {
+		GroupShare {
+			group_id: 0,
+			iteration_exponent: 0,
+			group_index: 0,
+			group_threshold: 0,
+			group_count: 0,
+			member_threshold: 0,
+			member_shares: vec![],
+		}
+	}
+}
+
 impl fmt::Display for GroupShare {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		writeln!(
@@ -61,6 +76,27 @@ impl fmt::Display for GroupShare {
 			writeln!(f)?;
 		}
 		Ok(())
+	}
+}
+
+impl GroupShare {
+	/// return list of mnemonics
+	pub fn mnemonic_list(&self) -> Result<Vec<Vec<String>>, Error> {
+		let mut ret_vec = vec![];
+		for s in &self.member_shares {
+			ret_vec.push(s.to_mnemonic()?);
+		}
+		Ok(ret_vec)
+	}
+
+	/// decode member shares to single share
+	pub fn decode_shares(&mut self) -> Result<Share, Error> {
+		let sp = Splitter::new(None);
+		for s in &mut self.member_shares {
+			println!("NEW MEMHBER INDEX: {}", self.group_index);
+			s.member_index = self.group_index;
+		}
+		sp.recover_secret(&self.member_shares, self.member_threshold)
 	}
 }
 
@@ -124,18 +160,18 @@ pub fn generate_mnemonics(
 		groups.len() as u8,
 		&encrypted_master_secret,
 	)?;
+	println!("Splitting here: {:?}", group_shares);
 
 	let mut retval: Vec<GroupShare> = vec![];
 
 	let gs_len = group_shares.len();
-	for (i, mut elem) in group_shares.into_iter().enumerate() {
-		elem.group_index = i as u8;
-		elem.group_threshold = group_threshold;
-		elem.group_count = gs_len as u8;
+	for (i, elem) in group_shares.into_iter().enumerate() {
+		proto_share.group_index = i as u8;
+		proto_share.group_threshold = group_threshold;
+		proto_share.group_count = gs_len as u8;
 		let (member_threshold, member_count) = groups[i];
 		let member_shares =
-			sp.split_secret(&elem, member_threshold, member_count, &elem.share_value)?;
-
+			sp.split_secret(&proto_share, member_threshold, member_count, &elem.share_value)?;
 		retval.push(GroupShare {
 			group_id: proto_share.identifier,
 			iteration_exponent: iteration_exponent,
@@ -150,18 +186,107 @@ pub fn generate_mnemonics(
 	Ok(retval)
 }
 
+/// Combines mnemonic shares to obtain the master secret which was previously split using
+/// Shamir's secret sharing scheme.
+/// mnemonics: List of mnemonics.
+/// passphrase: The passphrase used to encrypt the master secret.
+/// return: The master secret.
+pub fn combine_mneumonics(mnemonics: &Vec<Vec<String>>, passphrase: &str) -> Result<Vec<u8>, Error> {
+	let group_shares = decode_mneumonics(mnemonics)?;
+	let mut shares = vec![];
+	for mut gs in group_shares {
+		shares.push(gs.decode_shares()?);
+	}
+	let sp = Splitter::new(None);
+	println!("");
+	println!("Recovering here: {:?}", shares);
+	let ems = sp.recover_secret(&shares, shares[0].group_threshold)?;
+	let encoder = util::encrypt::MasterSecretEnc::new()?;
+	let dms = encoder.decrypt(&ems.share_value, passphrase, ems.iteration_exponent, ems.identifier);
+	Ok(dms)
+}
+
+/// Decodes all Mneumonics to a list of shares and performs error checking
+fn decode_mneumonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Error> {
+	let mut shares = vec![];
+	//let mut check_vec = vec![];
+	if mnemonics.len() == 0 {
+		return Err(ErrorKind::Mneumonic(format!(
+			"List of mnemonics is empty.",
+		)))?;
+	}
+	for m in mnemonics {
+		shares.push(Share::from_mnemonic(&m)?);
+	}
+
+	let mut group_index_map = BTreeMap::new();
+
+	for s in shares {
+		if !group_index_map.contains_key(&s.group_index) {
+			let mut group_share = GroupShare::default();
+			group_share.group_id = s.identifier;
+			println!("INSERTING GROUP INDEX: {}", s.group_index);
+			group_share.group_index = s.group_index;
+			group_share.group_threshold = s.group_threshold;
+			group_share.iteration_exponent = s.iteration_exponent;
+			group_share.group_count = s.group_count;
+			group_share.member_shares = vec![s.clone()];
+			group_share.member_threshold = s.member_threshold;
+			group_index_map.insert(group_share.group_index, group_share);
+		} else {
+			let e = group_index_map.get_mut(&s.group_index).unwrap();
+			e.member_shares.push(s);
+		}
+		/*if s.identifier != group_shares[0].group_id {
+			return Err(ErrorKind::Mneumonic(format!(
+				"Invalid set of shares. All shares must have the same identifier.",
+			)))?;
+		}*/
+	}
+
+	// TODO: Now perform checks here
+
+	Ok(group_index_map.into_iter()
+		.map(|g| g.1)
+		.collect())
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
 
+	fn flatten_mnemonics(nms: &Vec<GroupShare>) -> Result<Vec<Vec<String>>, error::Error> {
+		let mut ret = vec![];
+		for m in nms {
+			for s in m.member_shares.iter() {
+				ret.push(s.to_mnemonic()?);
+			}
+		}
+		Ok(ret)
+	}
+
 	#[test]
 	fn generate_mnemonics_test() -> Result<(), error::Error> {
 		let master_secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
-		let mns = generate_mnemonics(2, &vec![(2, 2), (3, 5), (6, 10)], &master_secret, "", 0)?;
 
-		for s in mns {
+		// single 3 of 5 test, splat out all mnemonics
+		/*println!("Single 3 of 5 Encoded: {:?}", master_secret);
+		let mns = generate_mnemonics(1, &vec![(3, 5)], &master_secret, "", 0)?;
+		for s in &mns {
 			println!("{}", s);
 		}
+		let result = combine_mneumonics(&flatten_mnemonics(&mns)?, "")?;
+		println!("Single 3 of 5 Decoded: {:?}", result);
+		assert_eq!(result, master_secret);*/
+
+		// Test a few distinct groups
+		let mns = generate_mnemonics(2, &vec![(3, 5), (2, 5)], &master_secret, "", 0)?;
+		for s in &mns {
+			println!("{}", s);
+		}
+		let result = combine_mneumonics(&flatten_mnemonics(&mns)?, "")?;
+		println!("Single 3 of 5 Decoded: {:?}", result);
+		assert_eq!(result, master_secret);
 
 		Ok(())
 	}

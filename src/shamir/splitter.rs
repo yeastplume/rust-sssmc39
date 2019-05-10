@@ -169,11 +169,14 @@ impl Splitter {
 		}
 		let mut proto_share = shares[0].clone();
 		proto_share.share_value = vec![];
+		println!("RECOVERING: {:?}", shares);
 		let shared_secret = self.interpolate(shares, self.config.secret_index, &proto_share)?;
 
 		if threshold != 1 {
 			self.check_digest(shares, &shared_secret, &proto_share)?;
 		}
+
+		println!("RECOVERED: {:?}", shared_secret);
 
 		Ok(shared_secret)
 	}
@@ -184,10 +187,11 @@ impl Splitter {
 		if x_coords.contains(&x) {
 			for s in shares {
 				if s.member_index == x {
-					let mut s = proto_share.clone();
-					s.member_index = x;
-					s.share_value = s.share_value.clone();
-					return Ok(s);
+					println!("CONTAINS");
+					let mut ret_s = proto_share.clone();
+					ret_s.member_index = x;
+					ret_s.share_value = s.share_value.clone();
+					return Ok(ret_s);
 				}
 			}
 		}
@@ -202,7 +206,7 @@ impl Splitter {
 		}
 
 		let mut ret_share = proto_share.clone();
-		ret_share.member_index = x;
+		//ret_share.member_index = x;
 
 		for i in 0..share_value_lengths {
 			let points: Vec<(Gf256, Gf256)> = shares
