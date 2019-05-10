@@ -290,7 +290,7 @@ mod tests {
 		assert_eq!(result, master_secret);
 
 		// Test a few distinct groups
-		let mns = generate_mnemonics(2, &vec![(3, 5), (2, 5), (3, 3)], &master_secret, "", 0)?;
+		let mns = generate_mnemonics(2, &vec![(3, 5), (2, 5), (3, 3), (13, 16)], &master_secret, "", 0)?;
 		for s in &mns {
 			println!("{}", s);
 		}
