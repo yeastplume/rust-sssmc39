@@ -23,6 +23,8 @@
 
 mod share;
 mod splitter;
+mod sssmc39_scheme;
 
 pub use share::Share;
 pub use splitter::Splitter;
+pub use sssmc39_scheme::{combine_mneumonics, generate_mnemonics, GroupShare};
