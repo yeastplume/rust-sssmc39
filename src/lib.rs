@@ -222,14 +222,40 @@ pub fn combine_mneumonics(
 /// Decodes all Mneumonics to a list of shares and performs error checking
 fn decode_mneumonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Error> {
 	let mut shares = vec![];
-	//let mut check_vec = vec![];
 	if mnemonics.len() == 0 {
 		return Err(ErrorKind::Mneumonic(
 			format!("List of mnemonics is empty.",),
 		))?;
 	}
+	let check_len = mnemonics[0].len();
 	for m in mnemonics {
+		if m.len() != check_len {
+			return Err(ErrorKind::Mneumonic(format!(
+				"Invalid set of mnemonics. All mnemonics must have the same length.",
+			)))?;
+		}
 		shares.push(Share::from_mnemonic(&m)?);
+	}
+	
+	let check_share = shares[0].clone();
+	for s in shares.iter() {
+		if s.identifier != check_share.identifier {
+			return Err(ErrorKind::Mneumonic(format!(
+				"Invalid set of mnemonics. All mnemonics must begin with the same {} words. \
+				(Identifier and iteration exponen must be the same).",
+				s.config.id_exp_length_words,
+			)))?;
+		}
+		if s.group_threshold != check_share.group_threshold {
+			return Err(ErrorKind::Mneumonic(format!(
+				"Invalid set of mnemonics. All mnemonics must have the same group threshold"
+			)))?;
+		}
+		if s.group_count != check_share.group_count {
+			return Err(ErrorKind::Mneumonic(format!(
+				"Invalid set of mnemonics. All mnemonics must have the same group count"
+			)))?;
+		}
 	}
 
 	let mut group_index_map = BTreeMap::new();
@@ -249,16 +275,36 @@ fn decode_mneumonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Er
 			let e = group_index_map.get_mut(&s.group_index).unwrap();
 			e.member_shares.push(s);
 		}
-		/*if s.identifier != group_shares[0].group_id {
-			return Err(ErrorKind::Mneumonic(format!(
-				"Invalid set of shares. All shares must have the same identifier.",
-			)))?;
-		}*/
 	}
 
-	// TODO: Now perform checks here
+	if group_index_map.len() < check_share.group_threshold as usize {
+			return Err(ErrorKind::Mneumonic(format!(
+				"Insufficient number of mnemonic groups ({}). The required number \
+				of groups is {}.",
+				group_index_map.len(),
+				check_share.group_threshold,
+			)))?;
+	}
 
-	Ok(group_index_map.into_iter().map(|g| g.1).collect())
+	let groups:Vec<GroupShare> = group_index_map.into_iter()
+		.map(|g| g.1)
+		// remove groups where number of shares is below the member threshold
+		.filter(|g| g.member_shares.len() >= check_share.group_threshold as usize)
+		.collect();
+
+	// TODO: Should probably return info making problem mnemonics easier to identify
+	for g in groups.iter() {
+		if g.member_shares.len() < g.member_threshold as usize {
+			return Err(ErrorKind::Mneumonic(format!(
+				"Insufficient number of mnemonics (Group {}). At least {} mnemonics \
+				are required.",
+				g.group_index,
+				g.member_threshold,
+			)))?;
+		}
+	}
+
+	Ok(groups)
 }
 
 #[cfg(test)]

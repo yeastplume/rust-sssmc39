@@ -43,6 +43,8 @@ pub struct ShareConfig {
 	pub radix: u16,
 	/// The length of the radix in bits
 	pub radix_bits: u8,
+	/// id exp length
+	pub id_exp_length_words: u8,
 	/// The customization string used in the RS1024 checksum and in the PBKDF2 salt
 	pub customization_string: Vec<u8>,
 	/// The length of the RS1024 checksum in words
@@ -77,6 +79,7 @@ impl Default for ShareConfig {
 			id_length_bits,
 			radix,
 			radix_bits,
+			id_exp_length_words,
 			customization_string,
 			checksum_length_words,
 			metadata_length_words,
@@ -253,7 +256,7 @@ impl Share {
 	fn from_mnemonic_impl(&self, mn: &Vec<String>) -> Result<Self, Error> {
 		if mn.len() < self.config.min_mnemonic_length_words as usize {
 			return Err(ErrorKind::Mneumonic(format!(
-				"Invalid mnemonic length. The length of each mnemonic muse be at least {} words.",
+				"Invalid mnemonic length. The length of each mnemonic must be at least {} words.",
 				self.config.min_mnemonic_length_words,
 			)))?;
 		}
