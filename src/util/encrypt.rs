@@ -13,11 +13,20 @@
 // limitations under the License.
 
 //! Master secret encryption
-use std::num::NonZeroU32;
 
 use crate::error::Error;
 
+#[cfg(feature = "ring_pbkdf2")]
 use ring::{digest, pbkdf2};
+#[cfg(feature = "ring_pbkdf2")]
+use std::num::NonZeroU32;
+#[cfg(feature = "rust_crypto_pbkdf2")]
+use pbkdf2::pbkdf2;
+#[cfg(feature = "rust_crypto_pbkdf2")]
+use sha2::Sha256;
+#[cfg(feature = "rust_crypto_pbkdf2")]
+use hmac::Hmac;
+
 
 /// Config Struct
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -139,12 +148,29 @@ impl MasterSecretEnc {
 		salt.append(&mut r);
 		let mut password = vec![i];
 		password.append(&mut passphrase.as_bytes().to_vec());
+		self.pbkdf2_derive(iterations as u32, &salt, &password, out_length)
+	}
+	#[cfg(feature = "rust_crypto_pbkdf2")]
+	fn pbkdf2_derive(&self, iterations: u32, salt: &Vec<u8>, password: &Vec<u8>, out_length: usize) -> Vec<u8> {
+		let mut out = vec![0; out_length];
+		pbkdf2::<Hmac<Sha256>>(
+			password,
+			salt,
+			iterations as usize,
+			&mut out,
+		);
+		out
+	}
+
+	// Ring implementation of round function
+	#[cfg(feature = "ring_pbkdf2")]
+	fn pbkdf2_derive(&self, iterations: u32, salt: &Vec<u8>, password: &Vec<u8>, out_length: usize) -> Vec<u8> {
 		let mut out = vec![0; out_length];
 		pbkdf2::derive(
 			&digest::SHA256,
 			NonZeroU32::new(iterations as u32).unwrap(),
-			&salt,
-			&password,
+			salt,
+			password,
 			&mut out,
 		);
 		out

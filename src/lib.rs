@@ -16,6 +16,12 @@
 //! Should ultimately allow some flexibility around how shares can be
 //! provided and returned (e.g. provide hex string instead of mnemonics)
 
+#![deny(non_upper_case_globals)]
+#![deny(non_camel_case_types)]
+#![deny(non_snake_case)]
+#![deny(unused_mut)]
+#![warn(missing_docs)]
+
 #[macro_use]
 extern crate lazy_static;
 

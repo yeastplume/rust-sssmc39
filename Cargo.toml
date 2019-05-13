@@ -10,11 +10,18 @@ bitvec = "0.10"
 failure = "0.1"
 failure_derive = "0.1"
 rand = "0.6"
-digest = "0.8"
 hmac = "0.7"
 sha2 = "0.8"
-ring = "0.14"
-pbkdf2 = "0.3"
+ring = { version = "0.14", optional = true }
+digest = { version = "0.8", optional = true }
+pbkdf2 = { version = "0.3", optional = true, default-features = false }
+
+[features]
+#Highly recommended to use the ring version of pbkdf2.
+#Do not the rust_crypto version where security is paramount
+default = ["ring_pbkdf2"]
+ring_pbkdf2 = ["ring", "digest"]
+rust_crypto_pbkdf2 = ["pbkdf2"]
 
 [dev-dependencies]
 quickcheck = "0.4"
