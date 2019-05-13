@@ -235,7 +235,9 @@ fn decode_mneumonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Er
 
 	let check_share = shares[0].clone();
 	for s in shares.iter() {
-		if s.identifier != check_share.identifier || s.iteration_exponent != check_share.iteration_exponent {
+		if s.identifier != check_share.identifier
+			|| s.iteration_exponent != check_share.iteration_exponent
+		{
 			return Err(ErrorKind::Mneumonic(format!(
 				"Invalid set of mnemonics. All mnemonics must begin with the same {} words. \
 				 (Identifier and iteration exponent must be the same).",
@@ -291,7 +293,7 @@ fn decode_mneumonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Er
 
 	if groups.len() < check_share.group_threshold as usize {
 		return Err(ErrorKind::Mneumonic(format!(
-			"Insufficient number of groups with member counts that meet member threshold." 
+			"Insufficient number of groups with member counts that meet member threshold."
 		)))?;
 	}
 

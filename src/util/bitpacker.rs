@@ -168,7 +168,7 @@ impl BitPacker {
 	}
 
 	/// Return bitvec between m and n
-	pub fn remove_padding(&mut self, num_bits: usize) -> Result<(), Error>{
+	pub fn remove_padding(&mut self, num_bits: usize) -> Result<(), Error> {
 		let mut removed = self.bv.clone();
 		self.bv = removed.split_off(num_bits);
 		if removed.count_ones() > 0 {

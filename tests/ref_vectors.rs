@@ -18,8 +18,8 @@ extern crate serde_derive;
 
 use serde_json;
 
-use sssmc39::{Error, combine_mneumonics};
 use sssmc39::from_hex;
+use sssmc39::{combine_mneumonics, Error};
 
 // test vector entry, for deser from reference json
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -35,9 +35,7 @@ impl TVEntry {
 	pub fn mnemonics_to_vecs(&self) -> Vec<Vec<String>> {
 		let mut retvec = vec![];
 		for mn in self.mnemonics.iter() {
-			retvec.push(mn.split_whitespace()
-			.map(|s| s.into())
-			.collect());
+			retvec.push(mn.split_whitespace().map(|s| s.into()).collect());
 		}
 		retvec
 	}
@@ -49,7 +47,6 @@ impl TVEntry {
 			from_hex(self.master_secret.clone()).unwrap()
 		}
 	}
-
 }
 
 #[test]

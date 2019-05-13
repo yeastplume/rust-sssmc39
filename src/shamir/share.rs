@@ -239,7 +239,6 @@ impl Share {
 
 	/// Convert share data to u8 vec
 	pub fn to_u8_vec(&self) -> Result<Vec<u8>, Error> {
-
 		let bp = self.pack_bits()?;
 
 		// Read bits as u8 vec

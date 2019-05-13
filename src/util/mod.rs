@@ -22,5 +22,5 @@
 
 pub mod bitpacker;
 pub mod encrypt;
-pub mod rs1024;
 pub mod hex;
+pub mod rs1024;
