@@ -49,6 +49,9 @@ pub enum ErrorKind {
 	#[fail(display = "Value Error: {}", _0)]
 	Value(String),
 
+	#[fail(display = "Padding Error: All padding bits must be 0")]
+	Padding,
+
 	/// Other
 	#[fail(display = "Generic error: {}", _0)]
 	GenericError(String),

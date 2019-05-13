@@ -26,6 +26,7 @@ mod util;
 
 pub use error::Error;
 pub use shamir::GroupShare;
+pub use util::hex::from_hex;
 
 //TODO: Proper docs
 pub fn generate_mnemonics(

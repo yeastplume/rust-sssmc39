@@ -239,7 +239,6 @@ impl Share {
 
 	/// Convert share data to u8 vec
 	pub fn to_u8_vec(&self) -> Result<Vec<u8>, Error> {
-		println!("{:?}", self);
 
 		let bp = self.pack_bits()?;
 
@@ -276,6 +275,7 @@ impl Share {
 		{
 			return Err(ErrorKind::Mneumonic(format!("Invalid mnemonic length.",)))?;
 		}
+
 		rs1024::verify_checksum(&self.config.customization_string, &sum_data)?;
 
 		let mut ret_share = Share::new()?;
@@ -306,7 +306,7 @@ impl Share {
 			40,
 			bp.len() - self.config.radix_bits as usize * self.config.checksum_length_words as usize,
 		);
-		bp.remove_padding(bp.len() % 8);
+		bp.remove_padding(bp.len() % 8)?;
 
 		ret_share.share_value = bp.get_vec_u8(0, bp.len() / 8)?;
 

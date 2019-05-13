@@ -235,10 +235,10 @@ fn decode_mneumonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Er
 
 	let check_share = shares[0].clone();
 	for s in shares.iter() {
-		if s.identifier != check_share.identifier {
+		if s.identifier != check_share.identifier || s.iteration_exponent != check_share.iteration_exponent {
 			return Err(ErrorKind::Mneumonic(format!(
 				"Invalid set of mnemonics. All mnemonics must begin with the same {} words. \
-				 (Identifier and iteration exponen must be the same).",
+				 (Identifier and iteration exponent must be the same).",
 				s.config.id_exp_length_words,
 			)))?;
 		}
@@ -289,6 +289,12 @@ fn decode_mneumonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Er
 		.filter(|g| g.member_shares.len() >= check_share.group_threshold as usize)
 		.collect();
 
+	if groups.len() < check_share.group_threshold as usize {
+		return Err(ErrorKind::Mneumonic(format!(
+			"Insufficient number of groups with member counts that meet member threshold." 
+		)))?;
+	}
+
 	// TODO: Should probably return info making problem mnemonics easier to identify
 	for g in groups.iter() {
 		if g.member_shares.len() < g.member_threshold as usize {
@@ -297,6 +303,14 @@ fn decode_mneumonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Er
 				 are required.",
 				g.group_index, g.member_threshold,
 			)))?;
+		}
+		let test_share = g.member_shares[0].clone();
+		for ms in g.member_shares.iter() {
+			if test_share.member_threshold != ms.member_threshold {
+				return Err(ErrorKind::Mneumonic(format!(
+					"Mismatching member thresholds"
+				)))?;
+			}
 		}
 	}
 
