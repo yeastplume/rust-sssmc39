@@ -11,13 +11,13 @@ Again, this is an untested work-in-progess, so use at your own risk.
 
 * Field arithmetic, underlying encryption and RS1024 code in place.
 * Share splitting, conversion of share to Mnemonic and back in place.
+* Secret recovery from share mnemonics in place
+* Test vectors from original python reference implementation passing (see below)
 * Main master secret to group mnemonics in place (see test in `src/lib.rs`)
 
 ## Still Outstanding
 
-* Share recovery
 * Tightening of certain areas of code (check TODOS)
-* More testing and incorporate test vectors from original reference implementation (see below)
 * API shaping
 * Documentation
 * Continuous Integration
