@@ -101,7 +101,7 @@ impl GroupShare {
 /// passphrase: The passphrase used to encrypt the master secret.
 /// iteration_exponent: The iteration exponent.
 /// return: List of mnemonics.
-pub fn generate_mnemonics(
+pub fn generate_mneumonics(
 	group_threshold: u8,
 	groups: &Vec<(u8, u8)>,
 	master_secret: &Vec<u8>,
@@ -339,7 +339,7 @@ mod tests {
 
 		// single 3 of 5 test, splat out all mnemonics
 		println!("Single 3 of 5 Encoded: {:?}", master_secret);
-		let mns = generate_mnemonics(1, &vec![(3, 5)], &master_secret, "", 0)?;
+		let mns = generate_mneumonics(1, &vec![(3, 5)], &master_secret, "", 0)?;
 		for s in &mns {
 			println!("{}", s);
 		}
@@ -348,7 +348,7 @@ mod tests {
 		assert_eq!(result, master_secret);
 
 		// Test a few distinct groups
-		let mns = generate_mnemonics(
+		let mns = generate_mneumonics(
 			2,
 			&vec![(3, 5), (2, 5), (3, 3), (13, 16)],
 			&master_secret,

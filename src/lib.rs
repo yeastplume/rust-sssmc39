@@ -30,19 +30,19 @@ mod field;
 mod shamir;
 mod util;
 
-pub use error::Error;
+pub use error::{Error, ErrorKind};
 pub use shamir::GroupShare;
 pub use util::hex::from_hex;
 
 //TODO: Proper docs
-pub fn generate_mnemonics(
+pub fn generate_mneumonics(
 	group_threshold: u8,
 	groups: &Vec<(u8, u8)>,
 	master_secret: &Vec<u8>,
 	passphrase: &str,
 	iteration_exponent: u8,
 ) -> Result<Vec<GroupShare>, Error> {
-	shamir::generate_mnemonics(
+	shamir::generate_mneumonics(
 		group_threshold,
 		groups,
 		master_secret,
