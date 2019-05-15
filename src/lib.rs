@@ -31,18 +31,19 @@ mod shamir;
 mod util;
 
 pub use error::{Error, ErrorKind};
-pub use shamir::GroupShare;
-pub use util::hex::from_hex;
+pub use shamir::{GroupShare, Share};
+// TODO: only exposed for tests
+pub use util::hex::{to_hex, from_hex};
 
 //TODO: Proper docs
-pub fn generate_mneumonics(
+pub fn generate_mnemonics(
 	group_threshold: u8,
 	groups: &Vec<(u8, u8)>,
 	master_secret: &Vec<u8>,
 	passphrase: &str,
 	iteration_exponent: u8,
 ) -> Result<Vec<GroupShare>, Error> {
-	shamir::generate_mneumonics(
+	shamir::generate_mnemonics(
 		group_threshold,
 		groups,
 		master_secret,
@@ -53,23 +54,23 @@ pub fn generate_mneumonics(
 
 // TODO: Proper docs
 // should allow for different input formats
-pub fn combine_mneumonics(
+pub fn combine_mnemonics(
 	mnemonics: &Vec<Vec<String>>,
 	passphrase: &str,
 ) -> Result<Vec<u8>, Error> {
-	shamir::combine_mneumonics(mnemonics, passphrase)
+	shamir::combine_mnemonics(mnemonics, passphrase)
 }
 
 // TODO: Proper docs
 // Generate a random master secret and return shares
-pub fn generate_mneumonics_random(
+pub fn generate_mnemonics_random(
 	group_threshold: u8,
 	groups: &Vec<(u8, u8)>,
 	strength_bits: u16,
 	passphrase: &str,
 	iteration_exponent: u8,
 ) -> Result<Vec<GroupShare>, Error> {
-	shamir::generate_mneumonics_random(
+	shamir::generate_mnemonics_random(
 		group_threshold,
 		groups,
 		strength_bits,

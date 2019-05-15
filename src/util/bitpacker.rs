@@ -39,6 +39,13 @@ impl BitPacker {
 		BitPacker { bv: BitVec::new() }
 	}
 
+	/// Remove bits from end to meet boundary (for reading in u8 arrays)
+	pub fn normalize(&mut self, radix: usize) {
+		while self.bv.len() % radix != 0 {
+			self.bv.pop();
+		}
+	}
+
 	/// Append num_bits of zero padding to the internal bitvec
 	pub fn append_padding(&mut self, num_bits: u8) {
 		for _ in 0..num_bits {
@@ -118,7 +125,7 @@ impl BitPacker {
 	pub fn get_u8(&self, index: usize, num_bits: usize) -> Result<u8, Error> {
 		let mut retval: u8 = 0;
 		for i in index..index + num_bits {
-			if self.bv[i] == true {
+			if i < self.bv.len() && self.bv[i] == true {
 				retval += 1;
 			}
 			if i < index + num_bits - 1 {
@@ -132,7 +139,7 @@ impl BitPacker {
 	pub fn get_u16(&self, index: usize, num_bits: usize) -> Result<u16, Error> {
 		let mut retval: u16 = 0;
 		for i in index..index + num_bits {
-			if self.bv[i] == true {
+			if i < self.bv.len() && self.bv[i] == true {
 				retval += 1;
 			}
 			if i < index + num_bits - 1 {
@@ -146,7 +153,7 @@ impl BitPacker {
 	pub fn get_u32(&self, index: usize, num_bits: usize) -> Result<u32, Error> {
 		let mut retval: u32 = 0;
 		for i in index..index + num_bits {
-			if self.bv[i] == true {
+			if i < self.bv.len() && self.bv[i] == true {
 				retval += 1;
 			}
 			if i < index + num_bits - 1 {

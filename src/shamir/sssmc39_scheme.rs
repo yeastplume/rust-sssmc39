@@ -16,8 +16,6 @@
 
 use super::{Share, Splitter};
 use crate::error::{Error, ErrorKind};
-use crate::shamir::splitter::fill_vec_rand;
-
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -87,6 +85,19 @@ impl GroupShare {
 		Ok(ret_vec)
 	}
 
+	/// return list of mnemonics as space separated strings
+	pub fn mnemonic_list_flat(&self) -> Result<Vec<String>, Error> {
+		let mut ret_vec = vec![];
+		for s in &self.member_shares {
+			ret_vec.push(s.to_mnemonic()?.iter().fold(String::new(), |mut acc, s| {
+				acc.push_str(s);
+				acc.push_str(" ");
+				acc
+			}))
+		}
+		Ok(ret_vec)
+	}
+
 	/// decode member shares to single share
 	pub fn decode_shares(&mut self) -> Result<Share, Error> {
 		let sp = Splitter::new(None);
@@ -103,7 +114,7 @@ impl GroupShare {
 /// passphrase: The passphrase used to encrypt the master secret.
 /// iteration_exponent: The iteration exponent.
 /// return: List of mnemonics.
-pub fn generate_mneumonics(
+pub fn generate_mnemonics(
 	group_threshold: u8,
 	groups: &Vec<(u8, u8)>,
 	master_secret: &Vec<u8>,
@@ -183,7 +194,7 @@ pub fn generate_mneumonics(
 	Ok(retval)
 }
 
-pub fn generate_mneumonics_random(
+pub fn generate_mnemonics_random(
 	group_threshold: u8,
 	groups: &Vec<(u8, u8)>,
 	strength_bits: u16,
@@ -194,8 +205,7 @@ pub fn generate_mneumonics_random(
 	if strength_bits < proto_share.config.min_strength_bits {
 		return Err(ErrorKind::Value(format!(
 			"The requested strength of the master secret({} bits) must be at least {} bits.",
-			strength_bits,
-			proto_share.config.min_strength_bits,
+			strength_bits, proto_share.config.min_strength_bits,
 		)))?;
 	}
 	if strength_bits % 16 != 0 {
@@ -204,7 +214,13 @@ pub fn generate_mneumonics_random(
 			strength_bits,
 		)))?;
 	}
-	generate_mneumonics(group_threshold, groups, &fill_vec_rand(strength_bits as usize / 8), passphrase, iteration_exponent)
+	generate_mnemonics(
+		group_threshold,
+		groups,
+		&util::fill_vec_rand(strength_bits as usize / 8),
+		passphrase,
+		iteration_exponent,
+	)
 }
 
 /// Combines mnemonic shares to obtain the master secret which was previously split using
@@ -212,11 +228,11 @@ pub fn generate_mneumonics_random(
 /// mnemonics: List of mnemonics.
 /// passphrase: The passphrase used to encrypt the master secret.
 /// return: The master secret.
-pub fn combine_mneumonics(
+pub fn combine_mnemonics(
 	mnemonics: &Vec<Vec<String>>,
 	passphrase: &str,
 ) -> Result<Vec<u8>, Error> {
-	let group_shares = decode_mneumonics(mnemonics)?;
+	let group_shares = decode_mnemonics(mnemonics)?;
 	let mut shares = vec![];
 	for mut gs in group_shares {
 		shares.push(gs.decode_shares()?);
@@ -242,7 +258,7 @@ pub fn combine_mneumonics(
 }
 
 /// Decodes all Mneumonics to a list of shares and performs error checking
-fn decode_mneumonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Error> {
+fn decode_mnemonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Error> {
 	let mut shares = vec![];
 	if mnemonics.len() == 0 {
 		return Err(ErrorKind::Mneumonic(
@@ -365,16 +381,16 @@ mod tests {
 
 		// single 3 of 5 test, splat out all mnemonics
 		println!("Single 3 of 5 Encoded: {:?}", master_secret);
-		let mns = generate_mneumonics(1, &vec![(3, 5)], &master_secret, "", 0)?;
+		let mns = generate_mnemonics(1, &vec![(3, 5)], &master_secret, "", 0)?;
 		for s in &mns {
 			println!("{}", s);
 		}
-		let result = combine_mneumonics(&flatten_mnemonics(&mns)?, "")?;
+		let result = combine_mnemonics(&flatten_mnemonics(&mns)?, "")?;
 		println!("Single 3 of 5 Decoded: {:?}", result);
 		assert_eq!(result, master_secret);
 
 		// Test a few distinct groups
-		let mns = generate_mneumonics(
+		let mns = generate_mnemonics(
 			2,
 			&vec![(3, 5), (2, 5), (3, 3), (13, 16)],
 			&master_secret,
@@ -384,7 +400,7 @@ mod tests {
 		for s in &mns {
 			println!("{}", s);
 		}
-		let result = combine_mneumonics(&flatten_mnemonics(&mns)?, "")?;
+		let result = combine_mnemonics(&flatten_mnemonics(&mns)?, "")?;
 		println!("Single 3 of 5 Decoded: {:?}", result);
 		assert_eq!(result, master_secret);
 

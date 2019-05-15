@@ -99,7 +99,7 @@ impl ShareConfig {
 	}
 }
 
-/// Main definition of a share and its mneumonic serialization
+/// Main definition of a share and its mnemonic serialization
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Share {
 	/// Random 15 bit value which is the same for all shares and is used to verify
@@ -171,9 +171,21 @@ impl Share {
 
 	/// convenience to create new from Mneumonic
 	pub fn from_mnemonic(mn: &Vec<String>) -> Result<Self, Error> {
-		let s = Share::new()?;
-		s.from_mnemonic_impl(mn)
+		let mut s = Share::new()?;
+		s.from_mnemonic_impl(mn)?;
+		Ok(s)
 	}
+
+	/// Convert from a u8 vec
+	pub fn from_u8_vec(input: &Vec<u8>) -> Result<Self, Error> {
+		let mut s = Share::new()?;
+		let mut bp = BitPacker::new();
+		bp.append_vec_u8(input)?;
+		bp.normalize(s.config.radix_bits as usize);
+		s.parse_bp(&mut bp)?;
+		Ok(s)
+	}
+
 
 	// create the packed bit array
 	fn pack_bits(&self) -> Result<BitPacker, Error> {
@@ -237,6 +249,15 @@ impl Share {
 			.collect())
 	}
 
+	/// Convert share data to a share mnemonic (flattened string)
+	/*pub fn to_mnemonic_flat(&self) -> Result<String, Error> {
+		self.to_mnemonic()?.iter().fold(String::new(), |mut acc, s| {
+			acc.push_str(s);
+			acc.push_str(" ");
+			acc
+		})
+	}*/
+
 	/// Convert share data to u8 vec
 	pub fn to_u8_vec(&self) -> Result<Vec<u8>, Error> {
 		let bp = self.pack_bits()?;
@@ -246,12 +267,11 @@ impl Share {
 		for i in (0..bp.len()).step_by(8) {
 			ret_vec.push(bp.get_u8(i, 8)?);
 		}
-
 		Ok(ret_vec)
 	}
 
 	/// convert mnemonic back to share
-	fn from_mnemonic_impl(&self, mn: &Vec<String>) -> Result<Self, Error> {
+	fn from_mnemonic_impl(&mut self, mn: &Vec<String>) -> Result<(), Error> {
 		if mn.len() < self.config.min_mnemonic_length_words as usize {
 			return Err(ErrorKind::Mneumonic(format!(
 				"Invalid mnemonic length. The length of each mnemonic must be at least {} words.",
@@ -262,7 +282,10 @@ impl Share {
 		for s in mn {
 			bp.append_u16(WORD_INDEX_MAP[s] as u16, self.config.radix_bits)?;
 		}
+		self.parse_bp(&mut bp)
+	}
 
+	fn parse_bp(&mut self, bp: &mut BitPacker) -> Result<(), Error> {
 		let mut sum_data: Vec<u32> = vec![];
 		for i in (0..bp.len()).step_by(self.config.radix_bits as usize) {
 			sum_data.push(bp.get_u32(i, self.config.radix_bits as usize)?);
@@ -277,24 +300,22 @@ impl Share {
 
 		rs1024::verify_checksum(&self.config.customization_string, &sum_data)?;
 
-		let mut ret_share = Share::new()?;
-
 		//TODO: iterator on bitpacker
-		ret_share.identifier = bp.get_u16(0, self.config.id_length_bits as usize)?;
-		ret_share.iteration_exponent = bp.get_u8(
+		self.identifier = bp.get_u16(0, self.config.id_length_bits as usize)?;
+		self.iteration_exponent = bp.get_u8(
 			self.config.id_length_bits as usize,
 			self.config.iteration_exp_length_bits as usize,
 		)?;
-		ret_share.group_index = bp.get_u8(
+		self.group_index = bp.get_u8(
 			(self.config.id_length_bits + self.config.iteration_exp_length_bits) as usize,
 			4,
 		)?;
-		ret_share.group_threshold = bp.get_u8(24, 4)? + 1;
-		ret_share.group_count = bp.get_u8(28, 4)? + 1;
-		ret_share.member_index = bp.get_u8(32, 4)?;
-		ret_share.member_threshold = bp.get_u8(36, 4)? + 1;
+		self.group_threshold = bp.get_u8(24, 4)? + 1;
+		self.group_count = bp.get_u8(28, 4)? + 1;
+		self.member_index = bp.get_u8(32, 4)?;
+		self.member_threshold = bp.get_u8(36, 4)? + 1;
 
-		if ret_share.group_count < ret_share.group_threshold {
+		if self.group_count < self.group_threshold {
 			return Err(ErrorKind::Mneumonic(format!(
 				"Invalid mnemonic. Group threshold cannot be greater than group count.",
 			)))?;
@@ -307,9 +328,9 @@ impl Share {
 		);
 		bp.remove_padding(bp.len() % 8)?;
 
-		ret_share.share_value = bp.get_vec_u8(0, bp.len() / 8)?;
+		self.share_value = bp.get_vec_u8(0, bp.len() / 8)?;
 
-		Ok(ret_share)
+		Ok(())
 	}
 
 	fn generate_random_identifier(&self) -> u16 {

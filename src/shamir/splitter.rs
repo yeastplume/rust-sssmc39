@@ -13,8 +13,8 @@
 // limitations under the License.
 
 use crate::error::{Error, ErrorKind};
+use crate::util;
 use crate::shamir::Share;
-use rand::{thread_rng, Rng};
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
@@ -130,12 +130,12 @@ impl Splitter {
 			let mut s = proto_share.clone();
 			s.member_index = i;
 			s.member_threshold = threshold;
-			s.share_value = fill_vec_rand(shared_secret.len());
+			s.share_value = util::fill_vec_rand(shared_secret.len());
 			shares.push(s);
 		}
 
 		let random_part =
-			fill_vec_rand(shared_secret.len() - self.config.digest_length_bytes as usize);
+			util::fill_vec_rand(shared_secret.len() - self.config.digest_length_bytes as usize);
 		let mut digest = self.create_digest(&random_part.to_vec(), &shared_secret);
 		digest.append(&mut random_part.to_vec());
 
@@ -251,18 +251,10 @@ impl Splitter {
 	}
 }
 
-// fill a u8 vec with n bytes of random data
-pub fn fill_vec_rand(n: usize) -> Vec<u8> {
-	let mut v = vec![];
-	for _ in 0..n {
-		v.push(thread_rng().gen());
-	}
-	v
-}
-
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use rand::{thread_rng, Rng};
 
 	// run split and recover given shares and thresholds, then check random combinations of threshold
 	// shares reconstruct the secret
@@ -272,7 +264,7 @@ mod tests {
 		total_shares: u8,
 	) -> Result<(), Error> {
 		let sp = Splitter::new(None);
-		let secret = fill_vec_rand(secret_length_bytes);
+		let secret = util::fill_vec_rand(secret_length_bytes);
 		println!("Secret is: {:?}", secret);
 		let proto_share = Share::new()?;
 		let mut shares = sp.split_secret(&proto_share, threshold, total_shares, &secret)?;

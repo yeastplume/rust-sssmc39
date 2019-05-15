@@ -24,3 +24,16 @@ pub mod bitpacker;
 pub mod encrypt;
 pub mod hex;
 pub mod rs1024;
+
+use rand::{thread_rng, Rng};
+
+// fill a u8 vec with n bytes of random data
+pub fn fill_vec_rand(n: usize) -> Vec<u8> {
+	let mut v = vec![];
+	for _ in 0..n {
+		v.push(thread_rng().gen());
+	}
+	v
+}
+
+
