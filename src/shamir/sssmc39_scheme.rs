@@ -16,6 +16,8 @@
 
 use super::{Share, Splitter};
 use crate::error::{Error, ErrorKind};
+use crate::shamir::splitter::fill_vec_rand;
+
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -179,6 +181,30 @@ pub fn generate_mneumonics(
 	}
 
 	Ok(retval)
+}
+
+pub fn generate_mneumonics_random(
+	group_threshold: u8,
+	groups: &Vec<(u8, u8)>,
+	strength_bits: u16,
+	passphrase: &str,
+	iteration_exponent: u8,
+) -> Result<Vec<GroupShare>, Error> {
+	let proto_share = Share::new()?;
+	if strength_bits < proto_share.config.min_strength_bits {
+		return Err(ErrorKind::Value(format!(
+			"The requested strength of the master secret({} bits) must be at least {} bits.",
+			strength_bits,
+			proto_share.config.min_strength_bits,
+		)))?;
+	}
+	if strength_bits % 16 != 0 {
+		return Err(ErrorKind::Value(format!(
+			"The requested strength of the master secret({} bits) must be a multiple of 16 bits.",
+			strength_bits,
+		)))?;
+	}
+	generate_mneumonics(group_threshold, groups, &fill_vec_rand(strength_bits as usize / 8), passphrase, iteration_exponent)
 }
 
 /// Combines mnemonic shares to obtain the master secret which was previously split using

@@ -59,3 +59,22 @@ pub fn combine_mneumonics(
 ) -> Result<Vec<u8>, Error> {
 	shamir::combine_mneumonics(mnemonics, passphrase)
 }
+
+// TODO: Proper docs
+// Generate a random master secret and return shares
+pub fn generate_mneumonics_random(
+	group_threshold: u8,
+	groups: &Vec<(u8, u8)>,
+	strength_bits: u16,
+	passphrase: &str,
+	iteration_exponent: u8,
+) -> Result<Vec<GroupShare>, Error> {
+	shamir::generate_mneumonics_random(
+		group_threshold,
+		groups,
+		strength_bits,
+		passphrase,
+		iteration_exponent,
+	)
+}
+

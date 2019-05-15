@@ -252,7 +252,7 @@ impl Splitter {
 }
 
 // fill a u8 vec with n bytes of random data
-fn fill_vec_rand(n: usize) -> Vec<u8> {
+pub fn fill_vec_rand(n: usize) -> Vec<u8> {
 	let mut v = vec![];
 	for _ in 0..n {
 		v.push(thread_rng().gen());

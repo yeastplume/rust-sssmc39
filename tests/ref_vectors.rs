@@ -24,6 +24,8 @@ use sssmc39::{combine_mneumonics, Error};
 // test vector entry, for deser from reference json
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct TVEntry {
+	// Metadata (test description)
+	pub meta: String,
 	// List of mnemonics
 	pub mnemonics: Vec<String>,
 	// Resulting master secret (decoding should fail if empty)
