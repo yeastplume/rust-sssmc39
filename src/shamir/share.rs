@@ -280,6 +280,12 @@ impl Share {
 		}
 		let mut bp = BitPacker::new();
 		for s in mn {
+			if !WORD_INDEX_MAP.contains_key(s) {
+				return Err(ErrorKind::Mneumonic(format!(
+					"Invalid mnemonic. '{}' is not an SSSMC39 word.",
+					s,
+				)))?;
+			}
 			bp.append_u16(WORD_INDEX_MAP[s] as u16, self.config.radix_bits)?;
 		}
 		self.parse_bp(&mut bp)
