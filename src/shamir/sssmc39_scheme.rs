@@ -330,7 +330,7 @@ fn decode_mnemonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Err
 		.into_iter()
 		.map(|g| g.1)
 		// remove groups where number of shares is below the member threshold
-		.filter(|g| g.member_shares.len() >= check_share.group_threshold as usize)
+		.filter(|g| g.member_shares.len() >= check_share.member_threshold as usize)
 		.collect();
 
 	if groups.len() < check_share.group_threshold as usize {
