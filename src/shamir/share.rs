@@ -186,11 +186,13 @@ impl Share {
 		Ok(s)
 	}
 
-
 	// create the packed bit array
 	fn pack_bits(&self) -> Result<BitPacker, Error> {
-		let padding_bit_count = self.config.radix_bits
+		let mut padding_bit_count = self.config.radix_bits
 			- (self.share_value.len() * 8 % self.config.radix_bits as usize) as u8;
+		if padding_bit_count == 10 {
+			padding_bit_count = 0;
+		}
 		let mut bp = BitPacker::new();
 
 		bp.append_u16(self.identifier, self.config.id_length_bits)?;
@@ -332,7 +334,8 @@ impl Share {
 			40,
 			bp.len() - self.config.radix_bits as usize * self.config.checksum_length_words as usize,
 		);
-		bp.remove_padding(bp.len() % 8)?;
+
+		bp.remove_padding(bp.len() % 16)?;
 
 		self.share_value = bp.get_vec_u8(0, bp.len() / 8)?;
 

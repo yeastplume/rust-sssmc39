@@ -389,6 +389,7 @@ mod tests {
 		println!("Single 3 of 5 Decoded: {:?}", result);
 		assert_eq!(result, master_secret);
 
+
 		// Test a few distinct groups
 		let mns = generate_mnemonics(
 			2,
@@ -403,6 +404,23 @@ mod tests {
 		let result = combine_mnemonics(&flatten_mnemonics(&mns)?, "")?;
 		println!("Single 3 of 5 Decoded: {:?}", result);
 		assert_eq!(result, master_secret);
+
+		// work through some varying sized secrets
+		let mut master_secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
+		for _ in 0..32 {
+			master_secret.push(0);
+			master_secret.push(1);
+
+			println!("Single 3 of 5 Encoded: {:?}", master_secret);
+			println!("master secret length: {}", master_secret.len());
+			let mns = generate_mnemonics(1, &vec![(3, 5)], &master_secret, "", 0)?;
+			for s in &mns {
+				println!("{}", s);
+			}
+			let result = combine_mnemonics(&flatten_mnemonics(&mns)?, "")?;
+			println!("Single 3 of 5 Decoded: {:?}", result);
+			assert_eq!(result, master_secret);
+		}
 
 		Ok(())
 	}

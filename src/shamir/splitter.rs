@@ -159,6 +159,8 @@ impl Splitter {
 			shares.push(r);
 		}
 
+		//self.check_digest(&shares, &shared_secret, &proto_share)?;
+
 		Ok(shares)
 	}
 
