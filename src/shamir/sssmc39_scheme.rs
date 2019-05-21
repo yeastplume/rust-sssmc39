@@ -317,6 +317,7 @@ fn decode_mnemonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Err
 		}
 	}
 
+
 	if group_index_map.len() < check_share.group_threshold as usize {
 		return Err(ErrorKind::Mneumonic(format!(
 			"Insufficient number of mnemonic groups ({}). The required number \
@@ -330,7 +331,7 @@ fn decode_mnemonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Err
 		.into_iter()
 		.map(|g| g.1)
 		// remove groups where number of shares is below the member threshold
-		.filter(|g| g.member_shares.len() >= check_share.member_threshold as usize)
+		.filter(|g| g.member_shares.len() >= g.member_threshold as usize)
 		.collect();
 
 	if groups.len() < check_share.group_threshold as usize {
@@ -377,7 +378,7 @@ mod tests {
 
 	#[test]
 	fn generate_mnemonics_test() -> Result<(), Error> {
-		let master_secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
+		/*let master_secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
 
 		// single 3 of 5 test, splat out all mnemonics
 		println!("Single 3 of 5 Encoded: {:?}", master_secret);
@@ -420,7 +421,19 @@ mod tests {
 			let result = combine_mnemonics(&flatten_mnemonics(&mns)?, "")?;
 			println!("Single 3 of 5 Decoded: {:?}", result);
 			assert_eq!(result, master_secret);
-		}
+		}*/
+		let one = "slavery flea acrobat eclipse cultural emission yield invasion seafood says insect square bucket orbit leaves closet heat ugly database decorate";
+		let two = "slavery flea acrobat emerald aviation escape year axle method forget rebound burden museum game suitable brave texture deploy together flash";
+		let three = "slavery flea acrobat envelope best ceiling dragon threaten isolate headset decrease organize crunch fiction sniff carbon museum username glasses plunge";
+		let four = "slavery flea beard echo cradle rebound penalty minister literary object have hazard elephant meaning enemy empty result capture peanut believe";
+		let five = "slavery flea beard email blind lips evaluate repair decent rich mortgage swimming branch decision unkind ultimate military sugar prepare airport";
+		let mut input = vec![];
+		input.push(one.split(' ').map(|s| s.to_owned()).collect());
+		input.push(two.split(' ').map(|s| s.to_owned()).collect());
+		input.push(three.split(' ').map(|s| s.to_owned()).collect());
+		input.push(four.split(' ').map(|s| s.to_owned()).collect());
+		input.push(five.split(' ' ).map(|s| s.to_owned()).collect());
+		let result = combine_mnemonics(&input, "TREZOR")?;
 
 		Ok(())
 	}
