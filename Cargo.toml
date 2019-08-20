@@ -3,6 +3,9 @@ name = "sssmc39"
 version = "0.0.1"
 authors = ["Yeastplume <yeastplume@protonmail.com>"]
 edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/yeastplume/rust-sssmc39"
+description = "Work-in-Progress of Shamir Secret Sharing for Mnemonic Codes (SLIP-39)"
 
 [dependencies]
 lazy_static = "1"
