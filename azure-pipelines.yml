@@ -1,19 +1,27 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- master
+  branches:
+    include:
+      - master
+  tags:
+    include: ['*']
 
-pool:
-  vmImage: 'ubuntu-latest'
+pr:
+  branches:
+    include: ['*']
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+variables:
+  RUST_BACKTRACE: '1'
+  RUSTFLAGS: '-C debug-assertions'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+jobs:
+- job: linux
+  pool:
+    vmImage: ubuntu-16.04
+  strategy:
+    matrix:
+      all:
+        CI_JOB: test
+        CI_JOB_ARGS: .
+  steps:
+    - template: '.ci/test.yml'
+    - template: '.ci/release.yml'

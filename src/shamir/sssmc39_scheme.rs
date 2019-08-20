@@ -440,4 +440,30 @@ mod tests {
 
 		Ok(())
 	}
+
+	// For temporary use as we have no command-line at present
+	#[test]
+	fn split_master_secret() -> Result<(), Error> {
+		let master_secret = b"fdd99010e03f3141662adb33644d5fd2bea0238fa805a2d21e396a22b926558c";
+		let mns = generate_mnemonics(1, &vec![(3, 5)], &master_secret.to_vec(), "", 0)?;
+		for s in &mns {
+			println!("{}", s);
+		}
+		let one = "ending senior academic acne acne lizard armed wrist fancy center blimp broken branch ceiling type bishop senior window mother dominant humidity kidney flip leader cover pupal swimming quarter findings picture much impulse answer threaten bishop express brother sharp unwrap bulge leaves guest ladybug imply thumb dress brave orbit orbit garbage vexed brave deploy tofu regular unusual hunting carbon year";
+		let two = "ending senior academic agree acid grill magazine trip impact diagnose headset year puny adorn swimming knife aquatic airline prayer hairy unfold forbid diminish sweater brave column holy spit superior replace script oasis firefly scared goat divorce oral laundry violence merit golden founder unusual taste preach ruin lying bumpy single glasses fitness argue daisy secret loud squeeze theater husky already";
+		let three = "ending senior academic amazing academic carbon sheriff march ordinary advocate climate quarter explain view glasses distance scandal modify maiden welcome include webcam snapshot lilac finance faint facility quantity daughter trash formal failure execute grasp necklace trust bishop privacy library infant slim envy parcel boring mixture deploy dough deny patrol evening brave idea blessing slush lizard woman teaspoon news exclude";
+		let four = "ending senior academic arcade acquire work exceed network revenue blanket force fiber ting standard fatigue extend acid holiday raspy pink vegan survive river step golden scandal tendency spray parcel vintage amuse remove best else unknown overall mild breathe nuclear wrist criminal jury deal rescue symbolic slow predator railroad verify involve require graduate ambition unknown repair scandal hobo voice railroad";
+		let five = "ending senior academic axle acquire golden velvet depart swing endorse champion estate slush alien burning painting obesity surprise punish gasoline elephant educate declare rebuild plains making unkind carve exotic unfold counter cowboy extra fantasy cleanup pickup increase type deliver together fumes nylon acrobat fatigue listen elder toxic losing paper image aide satisfy award axis evoke capital academic violence canyon";
+		let mut input = vec![];
+		input.push(one.split(' ').map(|s| s.to_owned()).collect());
+		input.push(two.split(' ').map(|s| s.to_owned()).collect());
+		input.push(three.split(' ').map(|s| s.to_owned()).collect());
+		input.push(four.split(' ').map(|s| s.to_owned()).collect());
+		input.push(five.split(' ' ).map(|s| s.to_owned()).collect());
+		let result = combine_mnemonics(&input, "")?;
+		println!("Result: {}", String::from_utf8(result).unwrap());
+		Ok(())
+	}
 }
+
+

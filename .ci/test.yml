@@ -1,0 +1,4 @@
+steps:
+  - script: '.ci/general-jobs'
+    displayName: Linux Cargo Test
+    condition: eq( variables['Agent.OS'], 'Linux' )

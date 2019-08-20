@@ -1,0 +1,12 @@
+# This script contains test-related jobs.
+
+case "${CI_JOB}" in
+    "test")
+        for dir in ${CI_JOB_ARGS}; do
+            printf "executing tests in directory \`%s\`...\n" "${dir}"
+            cd "${dir}" && \
+            cargo test --release && \
+            cd - > /dev/null || exit 1
+        done
+        ;;
+esac
