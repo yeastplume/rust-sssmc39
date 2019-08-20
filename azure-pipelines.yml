@@ -24,4 +24,3 @@ jobs:
         CI_JOB_ARGS: .
   steps:
     - template: '.ci/test.yml'
-    - template: '.ci/release.yml'
