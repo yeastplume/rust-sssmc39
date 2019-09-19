@@ -93,7 +93,7 @@ impl Splitter {
 		proto_share: &Share,
 		threshold: u8,
 		share_count: u8,
-		shared_secret: &Vec<u8>,
+		shared_secret: &[u8],
 	) -> Result<Vec<Share>, Error> {
 		if threshold == 0 || threshold > self.config.max_share_count {
 			return Err(ErrorKind::Argument(format!(
@@ -108,9 +108,7 @@ impl Splitter {
 			)))?;
 		}
 		if shared_secret.len() < 16 || shared_secret.len() % 2 != 0 {
-			return Err(ErrorKind::Argument(format!(
-				"Secret must be at least 16 bytes in length and a multiple of 2",
-			)))?;
+			return Err(ErrorKind::Argument("Secret must be at least 16 bytes in length and a multiple of 2".to_string()))?;
 		}
 
 		let mut shares = vec![];
@@ -165,9 +163,9 @@ impl Splitter {
 	}
 
 	/// recover a secret
-	pub fn recover_secret(&self, shares: &Vec<Share>, threshold: u8) -> Result<Share, Error> {
-		if shares.len() == 0 {
-			return Err(ErrorKind::Value(format!("Share set must not be empty.",)))?;
+	pub fn recover_secret(&self, shares: &[Share], threshold: u8) -> Result<Share, Error> {
+		if shares.is_empty() {
+			return Err(ErrorKind::Value("Share set must not be empty.".to_string()))?;
 		}
 		let mut proto_share = shares[0].clone();
 		proto_share.share_value = vec![];
@@ -181,7 +179,7 @@ impl Splitter {
 		Ok(shared_secret)
 	}
 
-	fn interpolate(&self, shares: &Vec<Share>, x: u8, proto_share: &Share) -> Result<Share, Error> {
+	fn interpolate(&self, shares: &[Share], x: u8, proto_share: &Share) -> Result<Share, Error> {
 		let x_coords: Vec<u8> = shares.iter().map(|s| s.member_index).collect();
 
 		if x_coords.contains(&x) {
@@ -198,9 +196,7 @@ impl Splitter {
 		let share_value_lengths = shares[0].share_value.len();
 		for s in shares {
 			if s.share_value.len() != share_value_lengths {
-				return Err(ErrorKind::Mneumonic(format!(
-					"Invalid set of shares. All share values must have the same length",
-				)))?;
+				return Err(ErrorKind::Mnemonic("Invalid set of shares. All share values must have the same length".to_string()))?;
 			}
 		}
 
@@ -225,7 +221,7 @@ impl Splitter {
 		Ok(ret_share)
 	}
 
-	fn create_digest(&self, random_data: &Vec<u8>, shared_secret: &Vec<u8>) -> Vec<u8> {
+	fn create_digest(&self, random_data: &[u8], shared_secret: &[u8]) -> Vec<u8> {
 		let mut mac = HmacSha256::new_varkey(random_data).expect("HMAC error");
 		mac.input(shared_secret);
 		let mut result = [0u8; 32];
@@ -237,7 +233,7 @@ impl Splitter {
 
 	fn check_digest(
 		&self,
-		shares: &Vec<Share>,
+		shares: &[Share],
 		shared_secret: &Share,
 		proto_share: &Share,
 	) -> Result<(), Error> {
@@ -245,9 +241,7 @@ impl Splitter {
 		let mut digest = digest_share.share_value.clone();
 		let random_part = digest.split_off(self.config.digest_length_bytes as usize);
 		if digest != self.create_digest(&random_part, &shared_secret.share_value) {
-			return Err(ErrorKind::Digest(format!(
-				"Invalid digest of the shared secret",
-			)))?;
+			return Err(ErrorKind::Digest("Invalid digest of the shared secret".to_string()))?;
 		}
 		Ok(())
 	}

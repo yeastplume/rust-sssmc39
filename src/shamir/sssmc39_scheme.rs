@@ -116,8 +116,8 @@ impl GroupShare {
 /// return: List of mnemonics.
 pub fn generate_mnemonics(
 	group_threshold: u8,
-	groups: &Vec<(u8, u8)>,
-	master_secret: &Vec<u8>,
+	groups: &[(u8, u8)],
+	master_secret: &[u8],
 	passphrase: &str,
 	iteration_exponent: u8,
 ) -> Result<Vec<GroupShare>, Error> {
@@ -130,14 +130,12 @@ pub fn generate_mnemonics(
 		return Err(ErrorKind::Value(format!(
 			"The length of the master secret ({} bytes) must be at least {} bytes.",
 			master_secret.len(),
-			(proto_share.config.min_strength_bits as f64 / 8f64).ceil(),
+			(f64::from(proto_share.config.min_strength_bits) / 8f64).ceil(),
 		)))?;
 	}
 
 	if master_secret.len() % 2 != 0 {
-		return Err(ErrorKind::Value(format!(
-			"The length of the master secret in bytes must be an even number",
-		)))?;
+		return Err(ErrorKind::Value("The length of the master secret in bytes must be an even number".to_string()))?;
 	}
 
 	if group_threshold as usize > groups.len() {
@@ -182,11 +180,11 @@ pub fn generate_mnemonics(
 		)?;
 		retval.push(GroupShare {
 			group_id: proto_share.identifier,
-			iteration_exponent: iteration_exponent,
+			iteration_exponent,
 			group_index: i as u8,
-			group_threshold: group_threshold,
+			group_threshold,
 			group_count: gs_len as u8,
-			member_threshold: member_threshold,
+			member_threshold,
 			member_shares,
 		});
 	}
@@ -196,7 +194,7 @@ pub fn generate_mnemonics(
 
 pub fn generate_mnemonics_random(
 	group_threshold: u8,
-	groups: &Vec<(u8, u8)>,
+	groups: &[(u8, u8)],
 	strength_bits: u16,
 	passphrase: &str,
 	iteration_exponent: u8,
@@ -229,7 +227,7 @@ pub fn generate_mnemonics_random(
 /// passphrase: The passphrase used to encrypt the master secret.
 /// return: The master secret.
 pub fn combine_mnemonics(
-	mnemonics: &Vec<Vec<String>>,
+	mnemonics: &[Vec<String>],
 	passphrase: &str,
 ) -> Result<Vec<u8>, Error> {
 	let group_shares = decode_mnemonics(mnemonics)?;
@@ -245,7 +243,7 @@ pub fn combine_mnemonics(
 			s.member_index = s.group_index;
 			s
 		})
-		.collect();
+		.collect::<Vec<_>>();
 	let ems = sp.recover_secret(&shares, shares[0].group_threshold)?;
 	let encoder = util::encrypt::MasterSecretEnc::new()?;
 	let dms = encoder.decrypt(
@@ -257,20 +255,18 @@ pub fn combine_mnemonics(
 	Ok(dms)
 }
 
-/// Decodes all Mneumonics to a list of shares and performs error checking
-fn decode_mnemonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Error> {
+/// Decodes all Mnemonics to a list of shares and performs error checking
+fn decode_mnemonics(mnemonics: &[Vec<String>]) -> Result<Vec<GroupShare>, Error> {
 	let mut shares = vec![];
-	if mnemonics.len() == 0 {
-		return Err(ErrorKind::Mneumonic(
-			format!("List of mnemonics is empty.",),
+	if mnemonics.is_empty() {
+		return Err(ErrorKind::Mnemonic(
+			"List of mnemonics is empty.".to_string(),
 		))?;
 	}
 	let check_len = mnemonics[0].len();
 	for m in mnemonics {
 		if m.len() != check_len {
-			return Err(ErrorKind::Mneumonic(format!(
-				"Invalid set of mnemonics. All mnemonics must have the same length.",
-			)))?;
+			return Err(ErrorKind::Mnemonic("Invalid set of mnemonics. All mnemonics must have the same length.".to_string()))?;
 		}
 		shares.push(Share::from_mnemonic(&m)?);
 	}
@@ -280,21 +276,17 @@ fn decode_mnemonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Err
 		if s.identifier != check_share.identifier
 			|| s.iteration_exponent != check_share.iteration_exponent
 		{
-			return Err(ErrorKind::Mneumonic(format!(
+			return Err(ErrorKind::Mnemonic(format!(
 				"Invalid set of mnemonics. All mnemonics must begin with the same {} words. \
 				 (Identifier and iteration exponent must be the same).",
 				s.config.id_exp_length_words,
 			)))?;
 		}
 		if s.group_threshold != check_share.group_threshold {
-			return Err(ErrorKind::Mneumonic(format!(
-				"Invalid set of mnemonics. All mnemonics must have the same group threshold"
-			)))?;
+			return Err(ErrorKind::Mnemonic("Invalid set of mnemonics. All mnemonics must have the same group threshold".to_string()))?;
 		}
 		if s.group_count != check_share.group_count {
-			return Err(ErrorKind::Mneumonic(format!(
-				"Invalid set of mnemonics. All mnemonics must have the same group count"
-			)))?;
+			return Err(ErrorKind::Mnemonic("Invalid set of mnemonics. All mnemonics must have the same group count".to_string()))?;
 		}
 	}
 
@@ -319,7 +311,7 @@ fn decode_mnemonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Err
 
 
 	if group_index_map.len() < check_share.group_threshold as usize {
-		return Err(ErrorKind::Mneumonic(format!(
+		return Err(ErrorKind::Mnemonic(format!(
 			"Insufficient number of mnemonic groups ({}). The required number \
 			 of groups is {}.",
 			group_index_map.len(),
@@ -335,15 +327,13 @@ fn decode_mnemonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Err
 		.collect();
 
 	if groups.len() < check_share.group_threshold as usize {
-		return Err(ErrorKind::Mneumonic(format!(
-			"Insufficient number of groups with member counts that meet member threshold."
-		)))?;
+		return Err(ErrorKind::Mnemonic("Insufficient number of groups with member counts that meet member threshold.".to_string()))?;
 	}
 
 	// TODO: Should probably return info making problem mnemonics easier to identify
 	for g in groups.iter() {
 		if g.member_shares.len() < g.member_threshold as usize {
-			return Err(ErrorKind::Mneumonic(format!(
+			return Err(ErrorKind::Mnemonic(format!(
 				"Insufficient number of mnemonics (Group {}). At least {} mnemonics \
 				 are required.",
 				g.group_index, g.member_threshold,
@@ -352,9 +342,7 @@ fn decode_mnemonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Err
 		let test_share = g.member_shares[0].clone();
 		for ms in g.member_shares.iter() {
 			if test_share.member_threshold != ms.member_threshold {
-				return Err(ErrorKind::Mneumonic(format!(
-					"Mismatching member thresholds"
-				)))?;
+				return Err(ErrorKind::Mnemonic("Mismatching member thresholds".to_string()))?;
 			}
 		}
 	}
@@ -366,7 +354,7 @@ fn decode_mnemonics(mnemonics: &Vec<Vec<String>>) -> Result<Vec<GroupShare>, Err
 mod tests {
 	use super::*;
 
-	fn flatten_mnemonics(nms: &Vec<GroupShare>) -> Result<Vec<Vec<String>>, Error> {
+	fn flatten_mnemonics(nms: &[GroupShare]) -> Result<Vec<Vec<String>>, Error> {
 		let mut ret = vec![];
 		for m in nms {
 			for s in m.member_shares.iter() {
@@ -382,7 +370,7 @@ mod tests {
 
 		// single 3 of 5 test, splat out all mnemonics
 		println!("Single 3 of 5 Encoded: {:?}", master_secret);
-		let mns = generate_mnemonics(1, &vec![(3, 5)], &master_secret, "", 0)?;
+		let mns = generate_mnemonics(1, &[(3, 5)], &master_secret, "", 0)?;
 		for s in &mns {
 			println!("{}", s);
 		}
@@ -394,7 +382,7 @@ mod tests {
 		// Test a few distinct groups
 		let mns = generate_mnemonics(
 			2,
-			&vec![(3, 5), (2, 5), (3, 3), (13, 16)],
+			&[(3, 5), (2, 5), (3, 3), (13, 16)],
 			&master_secret,
 			"",
 			0,
@@ -414,7 +402,7 @@ mod tests {
 
 			println!("Single 3 of 5 Encoded: {:?}", master_secret);
 			println!("master secret length: {}", master_secret.len());
-			let mns = generate_mnemonics(1, &vec![(3, 5)], &master_secret, "", 0)?;
+			let mns = generate_mnemonics(1, &[(3, 5)], &master_secret, "", 0)?;
 			for s in &mns {
 				println!("{}", s);
 			}
@@ -436,7 +424,7 @@ mod tests {
 		input.push(three.split(' ').map(|s| s.to_owned()).collect());
 		input.push(four.split(' ').map(|s| s.to_owned()).collect());
 		input.push(five.split(' ' ).map(|s| s.to_owned()).collect());
-		let result = combine_mnemonics(&input, "TREZOR")?;
+		let _result = combine_mnemonics(&input, "TREZOR")?;
 
 		Ok(())
 	}
@@ -445,7 +433,7 @@ mod tests {
 	#[test]
 	fn split_master_secret() -> Result<(), Error> {
 		let master_secret = b"fdd99010e03f3141662adb33644d5fd2bea0238fa805a2d21e396a22b926558c";
-		let mns = generate_mnemonics(1, &vec![(3, 5)], &master_secret.to_vec(), "", 0)?;
+		let mns = generate_mnemonics(1, &[(3, 5)], &master_secret.to_vec(), "", 0)?;
 		for s in &mns {
 			println!("{}", s);
 		}

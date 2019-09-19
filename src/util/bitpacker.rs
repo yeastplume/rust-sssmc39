@@ -54,9 +54,9 @@ impl BitPacker {
 	}
 
 	/// Append each element of a u8 vec to the bitvec
-	pub fn append_vec_u8(&mut self, data: &Vec<u8>) -> Result<(), Error> {
-		for i in 0..data.len() {
-			self.append_u8(data[i], 8)?;
+	pub fn append_vec_u8(&mut self, data: &[u8]) -> Result<(), Error> {
+		for b in data {
+			self.append_u8(*b, 8)?;
 		}
 		Ok(())
 	}
@@ -73,12 +73,10 @@ impl BitPacker {
 	/// Append first num_bits of a u32 to the bitvec. num_bits must be <= 32
 	pub fn append_u32(&mut self, val: u32, num_bits: u8) -> Result<(), Error> {
 		if num_bits > 32 {
-			return Err(ErrorKind::BitVec(format!(
-				"number of bits to pack must be <= 16",
-			)))?;
+			return Err(ErrorKind::BitVec("number of bits to pack must be <= 32".to_string()))?;
 		}
 		for i in (0u8..num_bits).rev() {
-			if val & 2u32.pow(i as u32) == 0 {
+			if val & 2u32.pow(u32::from(i)) == 0 {
 				self.bv.push(false);
 			} else {
 				self.bv.push(true);
@@ -90,12 +88,10 @@ impl BitPacker {
 	/// Append first num_bits of a u16 to the bitvec. num_bits must be <= 16
 	pub fn append_u16(&mut self, val: u16, num_bits: u8) -> Result<(), Error> {
 		if num_bits > 16 {
-			return Err(ErrorKind::BitVec(format!(
-				"number of bits to pack must be <= 16",
-			)))?;
+			return Err(ErrorKind::BitVec("number of bits to pack must be <= 16".to_string()))?;
 		}
 		for i in (0u8..num_bits).rev() {
-			if val & 2u16.pow(i as u32) == 0 {
+			if val & 2u16.pow(u32::from(i)) == 0 {
 				self.bv.push(false);
 			} else {
 				self.bv.push(true);
@@ -107,12 +103,10 @@ impl BitPacker {
 	/// Append first num_bits of a u8 to the bitvec, num_bits must be <= 8
 	pub fn append_u8(&mut self, val: u8, num_bits: u8) -> Result<(), Error> {
 		if num_bits > 8 {
-			return Err(ErrorKind::BitVec(format!(
-				"number of bits to pack must be <= 8",
-			)))?;
+			return Err(ErrorKind::BitVec("number of bits to pack must be <= 8".to_string()))?;
 		}
 		for i in (0u8..num_bits).rev() {
-			if val & 2u8.pow(i as u32) == 0 {
+			if val & 2u8.pow(u32::from(i)) == 0 {
 				self.bv.push(false);
 			} else {
 				self.bv.push(true);
@@ -125,7 +119,7 @@ impl BitPacker {
 	pub fn get_u8(&self, index: usize, num_bits: usize) -> Result<u8, Error> {
 		let mut retval: u8 = 0;
 		for i in index..index + num_bits {
-			if i < self.bv.len() && self.bv[i] == true {
+			if i < self.bv.len() && self.bv[i] {
 				retval += 1;
 			}
 			if i < index + num_bits - 1 {
@@ -139,7 +133,7 @@ impl BitPacker {
 	pub fn get_u16(&self, index: usize, num_bits: usize) -> Result<u16, Error> {
 		let mut retval: u16 = 0;
 		for i in index..index + num_bits {
-			if i < self.bv.len() && self.bv[i] == true {
+			if i < self.bv.len() && self.bv[i] {
 				retval += 1;
 			}
 			if i < index + num_bits - 1 {
@@ -153,7 +147,7 @@ impl BitPacker {
 	pub fn get_u32(&self, index: usize, num_bits: usize) -> Result<u32, Error> {
 		let mut retval: u32 = 0;
 		for i in index..index + num_bits {
-			if i < self.bv.len() && self.bv[i] == true {
+			if i < self.bv.len() && self.bv[i] {
 				retval += 1;
 			}
 			if i < index + num_bits - 1 {
@@ -210,7 +204,7 @@ mod tests {
 		assert_eq!(val3, bp.get_u8(20, 4)?);
 		assert_eq!(val4, bp.get_u8(24, 4)?);
 		assert_eq!(val5, bp.get_u16(28, 10)?);
-		assert_eq!(val5 as u32, bp.get_u32(28, 10)?);
+		assert_eq!(u32::from(val5), bp.get_u32(28, 10)?);
 		Ok(())
 	}
 }

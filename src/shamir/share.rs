@@ -69,11 +69,11 @@ impl Default for ShareConfig {
 		let min_strength_bits = 128;
 
 		// derived values
-		let radix = 2u16.pow(radix_bits as u32);
+		let radix = 2u16.pow(u32::from(radix_bits));
 		let id_exp_length_words = (id_length_bits + iteration_exp_length_bits) / radix_bits;
 		let metadata_length_words = id_exp_length_words + 2 + checksum_length_words;
 		let min_mnemonic_length_words =
-			metadata_length_words + (min_strength_bits as f64 / 10f64).ceil() as u8;
+			metadata_length_words + (f64::from(min_strength_bits) / 10f64).ceil() as u8;
 
 		ShareConfig {
 			id_length_bits,
@@ -169,15 +169,15 @@ impl Share {
 		Ok(s)
 	}
 
-	/// convenience to create new from Mneumonic
-	pub fn from_mnemonic(mn: &Vec<String>) -> Result<Self, Error> {
+	/// convenience to create new from Mnemonic
+	pub fn from_mnemonic(mn: &[String]) -> Result<Self, Error> {
 		let mut s = Share::new()?;
-		s.from_mnemonic_impl(mn)?;
+		s.fill_with_mnemonic(mn)?;
 		Ok(s)
 	}
 
 	/// Convert from a u8 vec
-	pub fn from_u8_vec(input: &Vec<u8>) -> Result<Self, Error> {
+	pub fn from_u8_vec(input: &[u8]) -> Result<Self, Error> {
 		let mut s = Share::new()?;
 		let mut bp = BitPacker::new();
 		bp.append_vec_u8(input)?;
@@ -209,7 +209,7 @@ impl Share {
 		bp.append_vec_u8(&self.share_value)?;
 
 		if bp.len() % self.config.radix_bits as usize != 0 {
-			return Err(ErrorKind::Mneumonic(format!(
+			return Err(ErrorKind::Mnemonic(format!(
 				"Incorrect share bit length. Must be a multiple of {}, actual length: {}",
 				self.config.radix_bits,
 				bp.len(),
@@ -273,9 +273,9 @@ impl Share {
 	}
 
 	/// convert mnemonic back to share
-	fn from_mnemonic_impl(&mut self, mn: &Vec<String>) -> Result<(), Error> {
+	fn fill_with_mnemonic(&mut self, mn: &[String]) -> Result<(), Error> {
 		if mn.len() < self.config.min_mnemonic_length_words as usize {
-			return Err(ErrorKind::Mneumonic(format!(
+			return Err(ErrorKind::Mnemonic(format!(
 				"Invalid mnemonic length. The length of each mnemonic must be at least {} words.",
 				self.config.min_mnemonic_length_words,
 			)))?;
@@ -283,7 +283,7 @@ impl Share {
 		let mut bp = BitPacker::new();
 		for s in mn {
 			if !WORD_INDEX_MAP.contains_key(s) {
-				return Err(ErrorKind::Mneumonic(format!(
+				return Err(ErrorKind::Mnemonic(format!(
 					"Invalid mnemonic. '{}' is not an SSSMC39 word.",
 					s,
 				)))?;
@@ -303,7 +303,7 @@ impl Share {
 			* (sum_data.len() - self.config.metadata_length_words as usize))
 			% 16 > 8
 		{
-			return Err(ErrorKind::Mneumonic(format!("Invalid mnemonic length.",)))?;
+			return Err(ErrorKind::Mnemonic("Invalid mnemonic length.".to_string()))?;
 		}
 
 		rs1024::verify_checksum(&self.config.customization_string, &sum_data)?;
@@ -324,9 +324,7 @@ impl Share {
 		self.member_threshold = bp.get_u8(36, 4)? + 1;
 
 		if self.group_count < self.group_threshold {
-			return Err(ErrorKind::Mneumonic(format!(
-				"Invalid mnemonic. Group threshold cannot be greater than group count.",
-			)))?;
+			return Err(ErrorKind::Mnemonic("Invalid mnemonic. Group threshold cannot be greater than group count.".to_string()))?;
 		}
 
 		// remove padding and recover data

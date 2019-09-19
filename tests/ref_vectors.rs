@@ -19,7 +19,7 @@ extern crate serde_derive;
 use serde_json;
 
 use sssmc39::{to_hex, from_hex};
-use sssmc39::{generate_mnemonics, combine_mnemonics, Error, Share};
+use sssmc39::{generate_mnemonics, combine_mnemonics, Error};
 
 use rand::{thread_rng, Rng};
 
@@ -54,7 +54,7 @@ impl TVEntry {
 	}
 	// master secret to u8
 	pub fn master_secret_to_u8_vec(&self) -> Vec<u8> {
-		if self.master_secret.len() == 0 {
+		if self.master_secret.is_empty() {
 			vec![]
 		} else {
 			from_hex(self.master_secret.clone()).unwrap()
@@ -69,20 +69,17 @@ fn test_json_vectors(input: &str) -> Result<(), Error> {
 		println!("TESTVECS: {:?}", tv.mnemonics_to_vecs());
 		println!("MASTER SECRET: {:?}", ref_ms);
 		let result = combine_mnemonics(&tv.mnemonics_to_vecs(), "TREZOR");
-		if ref_ms.len() > 0 {
+		if !ref_ms.is_empty() {
 			if let Ok(returned_ms) = result {
 				assert_eq!(ref_ms, returned_ms);
 				println!("OK - passed");
 			}
+		} else if result.is_ok() {
+			println!("Result SHOULD HAVE FAILED - {:?}", result);
+			panic!();
 		} else {
-			if !result.is_err() {
-				println!("Result SHOULD HAVE FAILED - {:?}", result);
-
-				assert!(result.is_err());
-			} else {
-				println!("{}", result.unwrap_err());
-				println!("OK - should fail");
-			}
+			println!("{}", result.unwrap_err());
+			println!("OK - should fail");
 		}
 	}
 	Ok(())
@@ -107,11 +104,11 @@ fn create_test_vectors() -> Result<(), Error> {
 			master_secret: to_hex(secret.clone()),
 		});
 
-		let description = format!("Mnemonic with invalid checksum ({} bits)", 8*n);
+		/*let description = format!("Mnemonic with invalid checksum ({} bits)", 8*n);
 		let indices = groups[0].member_shares[0].to_u8_vec()?;
 		let share = Share::from_u8_vec(&indices)?;
 		
-		/*output.push(TVEntry {
+		output.push(TVEntry {
 			meta: description,
 			mnemonics: share.mnemonic_list_flat()?,
 			master_secret: "".to_owned(),

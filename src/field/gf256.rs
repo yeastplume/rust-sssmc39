@@ -114,8 +114,8 @@ impl Tables {
 	}
 }
 
-/// Static reference to Generated tables
 lazy_static! {
+	/// Static reference to Generated tables
 	pub static ref TABLES: Tables = { Tables::generate() };
 }
 
@@ -145,14 +145,14 @@ impl Gf256 {
 		Gf256 { poly: b }
 	}
 	#[inline]
-	pub fn to_byte(&self) -> u8 {
+	pub fn to_byte(self) -> u8 {
 		self.poly
 	}
 	pub fn exp(power: u8) -> Gf256 {
 		let tabs = get_tables();
 		Gf256::from_byte(tabs.exp[power as usize])
 	}
-	pub fn log(&self) -> Option<u8> {
+	pub fn log(self) -> Option<u8> {
 		if self.poly == 0 {
 			None
 		} else {
@@ -160,20 +160,19 @@ impl Gf256 {
 			Some(tabs.log[self.poly as usize])
 		}
 	}
-	pub fn pow(&self, mut exp: u8) -> Gf256 {
-		let mut base = *self;
+	pub fn pow(mut self, mut exp: u8) -> Gf256 {
 		let mut acc = Self::one();
 
 		while exp > 1 {
 			if (exp & 1) == 1 {
-				acc = acc * base;
+				acc *= self;
 			}
 			exp /= 2;
-			base = base * base;
+			self *= self;
 		}
 
 		if exp == 1 {
-			acc = acc * base;
+			acc *= self;
 		}
 
 		acc
@@ -183,6 +182,7 @@ impl Gf256 {
 impl Add<Gf256> for Gf256 {
 	type Output = Gf256;
 	#[inline]
+	#[allow(clippy::suspicious_arithmetic_impl)]
 	fn add(self, rhs: Gf256) -> Gf256 {
 		Gf256::from_byte(self.poly ^ rhs.poly)
 	}
@@ -198,6 +198,7 @@ impl AddAssign<Gf256> for Gf256 {
 impl Sub<Gf256> for Gf256 {
 	type Output = Gf256;
 	#[inline]
+	#[allow(clippy::suspicious_arithmetic_impl)]
 	fn sub(self, rhs: Gf256) -> Gf256 {
 		Gf256::from_byte(self.poly ^ rhs.poly)
 	}
@@ -346,7 +347,9 @@ mod tests {
 			}
 
 			fn law_commutativity(a: Gf256, b: Gf256) -> bool {
-				a + b == b + a
+				let x = a + b;
+				let y = b + a;
+				x == y
 			}
 
 			fn law_distributivity(a: Gf256, b: Gf256, c: Gf256) -> bool {
@@ -372,7 +375,9 @@ mod tests {
 			}
 
 			fn law_commutativity(a: Gf256, b: Gf256) -> bool {
-				a * b == b * a
+				let x = a * b;
+				let y = b * a;
+				x == y
 			}
 
 			fn law_distributivity(a: Gf256, b: Gf256, c: Gf256) -> bool {
