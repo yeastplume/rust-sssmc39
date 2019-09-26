@@ -36,10 +36,11 @@ pub use shamir::{GroupShare, Share};
 pub use util::hex::{to_hex, from_hex};
 
 //TODO: Proper docs
+/// Generates shares from the provided master secret (e.g. BIP39 entropy)
 pub fn generate_mnemonics(
 	group_threshold: u8,
-	groups: &Vec<(u8, u8)>,
-	master_secret: &Vec<u8>,
+	groups: &[(u8, u8)],
+	master_secret: &[u8],
 	passphrase: &str,
 	iteration_exponent: u8,
 ) -> Result<Vec<GroupShare>, Error> {
@@ -54,18 +55,19 @@ pub fn generate_mnemonics(
 
 // TODO: Proper docs
 // should allow for different input formats
+/// Combines shares into a master secret (e.g. BIP39 entropy)
 pub fn combine_mnemonics(
-	mnemonics: &Vec<Vec<String>>,
+	mnemonics: &[Vec<String>],
 	passphrase: &str,
 ) -> Result<Vec<u8>, Error> {
 	shamir::combine_mnemonics(mnemonics, passphrase)
 }
 
 // TODO: Proper docs
-// Generate a random master secret and return shares
+/// Generate a random master secret (e.g. BIP39 entropy) and returns the shares from it
 pub fn generate_mnemonics_random(
 	group_threshold: u8,
-	groups: &Vec<(u8, u8)>,
+	groups: &[(u8, u8)],
 	strength_bits: u16,
 	passphrase: &str,
 	iteration_exponent: u8,

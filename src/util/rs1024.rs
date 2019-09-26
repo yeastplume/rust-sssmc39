@@ -17,20 +17,20 @@
 use crate::error::{Error, ErrorKind};
 
 const GEN: [u32; 10] = [
-	0xe0e040, 0x1c1c080, 0x3838100, 0x7070200, 0xe0e0009, 0x1c0c2412, 0x38086c24, 0x3090fc48,
-	0x21b1f890, 0x3f3f120,
+	0x00e0_e040, 0x1c1_c080, 0x0383_8100, 0x0707_0200, 0xe0e_0009, 0x1c0c_2412, 0x3808_6c24, 0x3090_fc48,
+	0x21b1_f890, 0x03f3_f120,
 ];
 
 /// values intepreted as a list of 10 bit integers
-fn polymod(values: &Vec<u32>) -> u32 {
+fn polymod(values: &[u32]) -> u32 {
 	let mut chk = 1;
 	let mut b: u32;
 	for v in values {
 		b = chk >> 20;
 		chk = (chk & 0xfffff) << 10 ^ v;
-		for i in 0..10 {
+		for (i, item) in GEN.iter().enumerate() {
 			if (b >> i) & 1 == 1 {
-				chk ^= GEN[i];
+				chk ^= *item;
 			}
 		}
 	}
@@ -38,11 +38,11 @@ fn polymod(values: &Vec<u32>) -> u32 {
 }
 
 pub fn create_checksum(
-	custom_string: &Vec<u8>,
-	data: &Vec<u32>,
+	custom_string: &[u8],
+	data: &[u32],
 	checksum_length_words: u8,
 ) -> Vec<u32> {
-	let mut values: Vec<u32> = custom_string.iter().map(|d| *d as u32).collect();
+	let mut values: Vec<u32> = custom_string.iter().map(|d| u32::from(*d)).collect();
 	for e in data {
 		values.push(e.to_owned());
 	}
@@ -52,13 +52,13 @@ pub fn create_checksum(
 	let polymod = polymod(&values) ^ 1;
 	let mut retval = vec![];
 	for i in 0..checksum_length_words as usize {
-		retval.push(polymod >> 10 * (2 - i) & 1023);
+		retval.push(polymod >> (10 * (2 - i)) & 1023);
 	}
 	retval
 }
 
-pub fn verify_checksum(custom_string: &Vec<u8>, data: &Vec<u32>) -> Result<(), Error> {
-	let mut values: Vec<u32> = custom_string.iter().map(|d| *d as u32).collect();
+pub fn verify_checksum(custom_string: &[u8], data: &[u32]) -> Result<(), Error> {
+	let mut values: Vec<u32> = custom_string.iter().map(|d| u32::from(*d)).collect();
 	for e in data {
 		values.push(e.to_owned());
 	}
@@ -86,8 +86,8 @@ mod tests {
 		let checksum = create_checksum(&b"shamir".to_vec(), &test_vec, 3);
 		println!("Testvec: {:?}", test_vec);
 		assert_eq!(checksum, expected);
-		for i in 0..3 {
-			test_vec.push(checksum[i]);
+		for i in checksum.iter().take(3) {
+			test_vec.push(*i);
 		}
 		verify_checksum(&b"shamir".to_vec(), &test_vec)?;
 		assert!(verify_checksum(&b"fhamir".to_vec(), &test_vec).is_err());
@@ -100,8 +100,8 @@ mod tests {
 		let checksum = create_checksum(&b"shamir".to_vec(), &test_vec, 3);
 		println!("Testvec: {:?}", test_vec);
 		assert_eq!(checksum, expected);
-		for i in 0..3 {
-			test_vec.push(checksum[i]);
+		for i in checksum.iter().take(3) {
+			test_vec.push(*i);
 		}
 		verify_checksum(&b"shamir".to_vec(), &test_vec)?;
 		assert!(verify_checksum(&b"fhamir".to_vec(), &test_vec).is_err());

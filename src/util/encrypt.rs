@@ -84,7 +84,7 @@ impl MasterSecretEnc {
 
 	pub fn encrypt(
 		&self,
-		master_secret: &Vec<u8>,
+		master_secret: &[u8],
 		passphrase: &str,
 		iteration_exponent: u8,
 		identifier: u16,
@@ -93,6 +93,7 @@ impl MasterSecretEnc {
 		let mut r = l.split_off(l.len() / 2);
 		let salt = self.get_salt(identifier);
 		for i in 0..self.config.round_count {
+			// TODO This can be implemented without so much cloning
 			let tmp_r = r.clone();
 			r = self.xor(
 				&l,
@@ -106,7 +107,7 @@ impl MasterSecretEnc {
 
 	pub fn decrypt(
 		&self,
-		enc_master_secret: &Vec<u8>,
+		enc_master_secret: &[u8],
 		passphrase: &str,
 		iteration_exponent: u8,
 		identifier: u16,
@@ -115,6 +116,7 @@ impl MasterSecretEnc {
 		let mut r = l.split_off(l.len() / 2);
 		let salt = self.get_salt(identifier);
 		for i in (0..self.config.round_count).rev() {
+			// TODO This can be implemented without so much cloning
 			let tmp_r = r.clone();
 			r = self.xor(
 				&l,
@@ -138,20 +140,20 @@ impl MasterSecretEnc {
 		i: u8,
 		passphrase: &str,
 		e: u8,
-		salt: &Vec<u8>,
-		r: &Vec<u8>,
+		salt: &[u8],
+		r: &[u8],
 	) -> Vec<u8> {
-		let iterations = (self.config.min_iteration_count << e) / self.config.round_count as u16;
+		let iterations = (self.config.min_iteration_count << e) / u16::from(self.config.round_count);
 		let out_length = r.len();
-		let mut salt = salt.clone();
-		let mut r = r.clone();
+		let mut salt = salt.to_owned();
+		let mut r = r.to_owned();
 		salt.append(&mut r);
 		let mut password = vec![i];
 		password.append(&mut passphrase.as_bytes().to_vec());
-		self.pbkdf2_derive(iterations as u32, &salt, &password, out_length)
+		self.pbkdf2_derive(u32::from(iterations), &salt, &password, out_length)
 	}
 	#[cfg(feature = "rust_crypto_pbkdf2")]
-	fn pbkdf2_derive(&self, iterations: u32, salt: &Vec<u8>, password: &Vec<u8>, out_length: usize) -> Vec<u8> {
+	fn pbkdf2_derive(&self, iterations: u32, salt: &[u8], password: &[u8], out_length: usize) -> Vec<u8> {
 		let mut out = vec![0; out_length];
 		pbkdf2::<Hmac<Sha256>>(
 			password,
@@ -164,7 +166,7 @@ impl MasterSecretEnc {
 
 	// Ring implementation of round function
 	#[cfg(feature = "ring_pbkdf2")]
-	fn pbkdf2_derive(&self, iterations: u32, salt: &Vec<u8>, password: &Vec<u8>, out_length: usize) -> Vec<u8> {
+	fn pbkdf2_derive(&self, iterations: u32, salt: &[u8], password: &[u8], out_length: usize) -> Vec<u8> {
 		let mut out = vec![0; out_length];
 		pbkdf2::derive(
 			&digest::SHA256,
@@ -177,7 +179,7 @@ impl MasterSecretEnc {
 	}
 
 	// xor values in both arrays, up to length of b
-	fn xor(&self, a: &Vec<u8>, b: &Vec<u8>) -> Vec<u8> {
+	fn xor(&self, a: &[u8], b: &[u8]) -> Vec<u8> {
 		let mut retval = vec![0; b.len()];
 		for i in 0..b.len() {
 			retval[i] = a[i] ^ b[i];

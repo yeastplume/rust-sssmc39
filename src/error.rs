@@ -31,28 +31,35 @@ pub enum ErrorKind {
 	#[fail(display = "Configuration Error: {}", _0)]
 	Config(String),
 
+	/// Inconsistency between different arguments
 	#[fail(display = "Argument Error: {}", _0)]
 	Argument(String),
 
-	#[fail(display = "Mneumonic Error: {}", _0)]
-	Mneumonic(String),
+	/// Problems with a mnemonic or inconsistent mnemonics
+	#[fail(display = "Mnemonic Error: {}", _0)]
+	Mnemonic(String),
 
+	/// Assembling the full master secret resulted in an incorrect checksum
 	#[fail(display = "Digest Error: {}", _0)]
 	Digest(String),
 
+	/// Invalid usage of BitPacker.add_uX (num_bits longer than the size of uX)
 	#[fail(display = "BitVec Error: {}", _0)]
 	BitVec(String),
 
+	/// (unused currently)
 	#[fail(display = "Checksum Validation Error: {}", _0)]
 	Checksum(String),
 
+	/// Invalid value of one of the arguments
 	#[fail(display = "Value Error: {}", _0)]
 	Value(String),
 
+	/// Invalid usage of BitPacker.remove_padding (num_bits contained set bits)
 	#[fail(display = "Padding Error: All padding bits must be 0")]
 	Padding,
 
-	/// Other
+	/// (unused currently)
 	#[fail(display = "Generic error: {}", _0)]
 	GenericError(String),
 }
@@ -60,13 +67,7 @@ pub enum ErrorKind {
 impl Display for Error {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let show_bt = match env::var("RUST_BACKTRACE") {
-			Ok(r) => {
-				if r == "1" {
-					true
-				} else {
-					false
-				}
-			}
+			Ok(r) => { r == "1" }
 			Err(_) => false,
 		};
 		let backtrace = match self.backtrace() {
@@ -92,7 +93,7 @@ impl Error {
 	pub fn cause_string(&self) -> String {
 		match self.cause() {
 			Some(k) => format!("{}", k),
-			None => format!("Unknown"),
+			None => "Unknown".to_string(),
 		}
 	}
 	/// get cause
@@ -115,6 +116,6 @@ impl From<ErrorKind> for Error {
 
 impl From<Context<ErrorKind>> for Error {
 	fn from(inner: Context<ErrorKind>) -> Error {
-		Error { inner: inner }
+		Error { inner }
 	}
 }
