@@ -114,11 +114,13 @@ impl Splitter {
 		let mut shares = vec![];
 		// if the threshold is 1, then the digest of the shared secret is not used
 		if threshold == 1 {
-			let mut s = proto_share.clone();
-			s.member_index = 0;
-			s.member_threshold = threshold;
-			s.share_value = shared_secret.to_owned();
-			shares.push(s);
+			for i in 0..share_count {
+				let mut s = proto_share.clone();
+				s.member_index = i;
+				s.member_threshold = threshold;
+				s.share_value = shared_secret.to_owned();
+				shares.push(s);
+			}
 			return Ok(shares);
 		}
 
