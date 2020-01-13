@@ -195,8 +195,6 @@ mod tests {
 	use super::*;
 	use rand::{thread_rng, Rng};
 
-	use crate::error::Error;
-
 	fn roundtrip_test(secret: Vec<u8>, passphrase: &str, identifier: u16, iteration_exponent: u8) {
 		let enc = MasterSecretEnc::default();
 		println!("master_secret: {:?}", secret);
