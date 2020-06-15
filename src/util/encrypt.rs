@@ -17,7 +17,7 @@
 use crate::error::Error;
 
 #[cfg(feature = "ring_pbkdf2")]
-use ring::{digest, pbkdf2};
+use ring::pbkdf2;
 #[cfg(feature = "ring_pbkdf2")]
 use std::num::NonZeroU32;
 #[cfg(feature = "rust_crypto_pbkdf2")]
@@ -171,7 +171,7 @@ impl MasterSecretEnc {
 	fn pbkdf2_derive(&self, iterations: u32, salt: &[u8], password: &[u8], out_length: usize) -> Vec<u8> {
 		let mut out = vec![0; out_length];
 		pbkdf2::derive(
-			&digest::SHA256,
+			ring::pbkdf2::PBKDF2_HMAC_SHA256,
 			NonZeroU32::new(iterations as u32).unwrap(),
 			salt,
 			password,

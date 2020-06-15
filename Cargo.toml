@@ -15,7 +15,7 @@ failure_derive = "0.1"
 rand = "0.6"
 hmac = "0.7"
 sha2 = "0.8"
-ring = { version = "0.14", optional = true }
+ring = { version = "0.16", optional = true }
 digest = { version = "0.8", optional = true }
 pbkdf2 = { version = "0.3", optional = true, default-features = false }
 
