@@ -9,7 +9,7 @@ description = "Work-in-Progress of Shamir Secret Sharing for Mnemonic Codes (SLI
 
 [dependencies]
 lazy_static = "1"
-bitvec = "0.10"
+bitvec = "0.17"
 failure = "0.1"
 failure_derive = "0.1"
 rand = "0.6"

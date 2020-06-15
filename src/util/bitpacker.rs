@@ -16,7 +16,7 @@
 //! Slower, but easier to follow and modify than a lot of bit twiddling
 //! BigEndian, as is bitvec default
 
-use bitvec::BitVec;
+use bitvec::prelude::*;
 
 use crate::error::{Error, ErrorKind};
 
