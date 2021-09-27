@@ -116,7 +116,7 @@ impl Tables {
 
 lazy_static! {
 	/// Static reference to Generated tables
-	pub static ref TABLES: Tables = { Tables::generate() };
+	pub static ref TABLES: Tables = Tables::generate();
 }
 
 fn get_tables() -> &'static Tables {

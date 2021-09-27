@@ -12,7 +12,7 @@ lazy_static = "1"
 bitvec = "0.17"
 failure = "0.1"
 failure_derive = "0.1"
-rand = "0.6"
+rand = "0.8"
 hmac = "0.7"
 sha2 = "0.8"
 ring = { version = "0.16", optional = true }
