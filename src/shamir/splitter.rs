@@ -228,10 +228,11 @@ impl Splitter {
 	}
 
 	fn create_digest(&self, random_data: &[u8], shared_secret: &[u8]) -> Vec<u8> {
-		let mut mac = HmacSha256::new_varkey(random_data).expect("HMAC error");
-		mac.input(shared_secret);
-		let mut result = [0u8; 32];
-		result.copy_from_slice(mac.result().code().as_slice());
+		let mut mac = HmacSha256::new_from_slice(random_data).expect("HMAC error");
+		mac.update(shared_secret);
+		let result = mac.finalize().into_bytes();
+		// let mut result = [0u8; 32];
+		// result.copy_from_slice(mac.finalize().into_bytes());
 		let mut ret_vec = result.to_vec();
 		ret_vec.truncate(4);
 		ret_vec
@@ -281,12 +282,12 @@ mod tests {
 				return Ok(());
 			}
 			// randomly remove a share till we're at threshold
-			let remove_index = thread_rng().gen_range(0, shares.len());
+			let remove_index = thread_rng().gen_range(0..shares.len());
 			shares.remove(remove_index);
 		}
 		// now remove one more, and recovery should fail
 		if shares.len() > 1 {
-			let remove_index = thread_rng().gen_range(0, shares.len());
+			let remove_index = thread_rng().gen_range(0..shares.len());
 			shares.remove(remove_index);
 			assert!(sp.recover_secret(&shares, threshold).is_err());
 		}
