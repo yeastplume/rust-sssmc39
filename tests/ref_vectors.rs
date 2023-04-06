@@ -18,8 +18,8 @@ extern crate serde_derive;
 
 use serde_json;
 
-use sssmc39::{to_hex, from_hex};
-use sssmc39::{generate_mnemonics, combine_mnemonics, Error};
+use sssmc39::{combine_mnemonics, generate_mnemonics, Error};
+use sssmc39::{from_hex, to_hex};
 
 use rand::{thread_rng, Rng};
 
@@ -95,7 +95,7 @@ fn test_vectors() -> Result<(), Error> {
 fn create_test_vectors() -> Result<(), Error> {
 	let mut output = vec![];
 	for n in [16, 32].to_vec() {
-		let description = format!("Valid mnemomic without sharing ({} bits)", 8*n);
+		let description = format!("Valid mnemomic without sharing ({} bits)", 8 * n);
 		let secret = fill_vec_rand(n);
 		let groups = generate_mnemonics(1, &[(1, 1)].to_vec(), &secret, "TREZOR", 0)?;
 		output.push(TVEntry {
@@ -107,7 +107,7 @@ fn create_test_vectors() -> Result<(), Error> {
 		/*let description = format!("Mnemonic with invalid checksum ({} bits)", 8*n);
 		let indices = groups[0].member_shares[0].to_u8_vec()?;
 		let share = Share::from_u8_vec(&indices)?;
-		
+
 		output.push(TVEntry {
 			meta: description,
 			mnemonics: share.mnemonic_list_flat()?,

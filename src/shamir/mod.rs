@@ -21,4 +21,6 @@ mod sssmc39_scheme;
 
 pub use share::Share;
 pub use splitter::Splitter;
-pub use sssmc39_scheme::{combine_mnemonics, generate_mnemonics, generate_mnemonics_random, GroupShare};
+pub use sssmc39_scheme::{
+	combine_mnemonics, generate_mnemonics, generate_mnemonics_random, GroupShare,
+};

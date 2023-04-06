@@ -73,7 +73,9 @@ impl BitPacker {
 	/// Append first num_bits of a u32 to the bitvec. num_bits must be <= 32
 	pub fn append_u32(&mut self, val: u32, num_bits: u8) -> Result<(), Error> {
 		if num_bits > 32 {
-			return Err(ErrorKind::BitVec("number of bits to pack must be <= 32".to_string()))?;
+			return Err(ErrorKind::BitVec(
+				"number of bits to pack must be <= 32".to_string(),
+			))?;
 		}
 		for i in (0u8..num_bits).rev() {
 			if val & 2u32.pow(u32::from(i)) == 0 {
@@ -88,7 +90,9 @@ impl BitPacker {
 	/// Append first num_bits of a u16 to the bitvec. num_bits must be <= 16
 	pub fn append_u16(&mut self, val: u16, num_bits: u8) -> Result<(), Error> {
 		if num_bits > 16 {
-			return Err(ErrorKind::BitVec("number of bits to pack must be <= 16".to_string()))?;
+			return Err(ErrorKind::BitVec(
+				"number of bits to pack must be <= 16".to_string(),
+			))?;
 		}
 		for i in (0u8..num_bits).rev() {
 			if val & 2u16.pow(u32::from(i)) == 0 {
@@ -103,7 +107,9 @@ impl BitPacker {
 	/// Append first num_bits of a u8 to the bitvec, num_bits must be <= 8
 	pub fn append_u8(&mut self, val: u8, num_bits: u8) -> Result<(), Error> {
 		if num_bits > 8 {
-			return Err(ErrorKind::BitVec("number of bits to pack must be <= 8".to_string()))?;
+			return Err(ErrorKind::BitVec(
+				"number of bits to pack must be <= 8".to_string(),
+			))?;
 		}
 		for i in (0u8..num_bits).rev() {
 			if val & 2u8.pow(u32::from(i)) == 0 {
