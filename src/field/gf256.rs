@@ -116,7 +116,7 @@ impl Tables {
 
 lazy_static! {
 	/// Static reference to Generated tables
-	pub static ref TABLES: Tables = { Tables::generate() };
+	pub static ref TABLES: Tables = Tables::generate();
 }
 
 fn get_tables() -> &'static Tables {
@@ -313,8 +313,7 @@ mod tests {
 					});
 
 					let ref_path = format!("tests/fixtures/gf256/gf256_{}.txt.gz", stringify!($id));
-					let reference =
-						BufReader::new(GzDecoder::new(File::open(ref_path).unwrap()).unwrap());
+					let reference = BufReader::new(GzDecoder::new(File::open(ref_path).unwrap()));
 
 					for ((i, j, k), line) in results.zip(reference.lines()) {
 						let left = format!("{} {} {} = {}", i, $op, j, k);
@@ -333,7 +332,7 @@ mod tests {
 	}
 
 	impl Arbitrary for Gf256 {
-		fn arbitrary<G: Gen>(gen: &mut G) -> Gf256 {
+		fn arbitrary(gen: &mut Gen) -> Gf256 {
 			Gf256::from_byte(u8::arbitrary(gen))
 		}
 	}
@@ -399,9 +398,7 @@ mod tests {
 				TestResult::from_bool(left && right)
 			}
 		}
-
 	}
-
 }
 
 #[cfg(test)]

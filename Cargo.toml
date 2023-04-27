@@ -8,16 +8,16 @@ repository = "https://github.com/yeastplume/rust-sssmc39"
 description = "Work-in-Progress of Shamir Secret Sharing for Mnemonic Codes (SLIP-39)"
 
 [dependencies]
-lazy_static = "1"
-bitvec = "0.17"
-failure = "0.1"
-failure_derive = "0.1"
-rand = "0.6"
-hmac = "0.7"
-sha2 = "0.8"
-ring = { version = "0.16", optional = true }
-digest = { version = "0.8", optional = true }
-pbkdf2 = { version = "0.3", optional = true, default-features = false }
+lazy_static = "1.4.0"
+bitvec = "1.0.1"
+failure = "0.1.8"
+failure_derive = "0.1.8"
+rand = "0.8.5"
+hmac = "0.12.1"
+sha2 = "0.10.6"
+ring = { version = "0.16.20", optional = true }
+digest = { version = "0.10.6", optional = true }
+pbkdf2 = { version = "0.12.1", optional = true, default-features = false }
 
 [features]
 #Highly recommended to use the ring version of pbkdf2.
@@ -27,9 +27,9 @@ ring_pbkdf2 = ["ring", "digest"]
 rust_crypto_pbkdf2 = ["pbkdf2"]
 
 [dev-dependencies]
-quickcheck = "0.4"
-flate2 = "0.2"
-itertools = "0.7"
-serde = "1"
-serde_derive = "1"
-serde_json = "1"
+quickcheck = "1.0.3"
+flate2 = "1.0.25"
+itertools = "0.10.5"
+serde = "1.0.159"
+serde_derive = "1.0.159"
+serde_json = "1.0.95"

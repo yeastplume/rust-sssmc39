@@ -33,7 +33,7 @@ mod util;
 pub use error::{Error, ErrorKind};
 pub use shamir::{GroupShare, Share};
 // TODO: only exposed for tests
-pub use util::hex::{to_hex, from_hex};
+pub use util::hex::{from_hex, to_hex};
 
 //TODO: Proper docs
 /// Generates shares from the provided master secret (e.g. BIP39 entropy)
@@ -56,10 +56,7 @@ pub fn generate_mnemonics(
 // TODO: Proper docs
 // should allow for different input formats
 /// Combines shares into a master secret (e.g. BIP39 entropy)
-pub fn combine_mnemonics(
-	mnemonics: &[Vec<String>],
-	passphrase: &str,
-) -> Result<Vec<u8>, Error> {
+pub fn combine_mnemonics(mnemonics: &[Vec<String>], passphrase: &str) -> Result<Vec<u8>, Error> {
 	shamir::combine_mnemonics(mnemonics, passphrase)
 }
 
@@ -80,4 +77,3 @@ pub fn generate_mnemonics_random(
 		iteration_exponent,
 	)
 }
-

@@ -24,7 +24,7 @@ use std::collections::HashMap;
 
 lazy_static! {
 	/// List of ssmc words
-	pub static ref WORDLIST: Vec<String> = { include_str!("wordlists/en.txt").split_whitespace().map(|s| s.into()).collect() };
+	pub static ref WORDLIST: Vec<String> = include_str!("wordlists/en.txt").split_whitespace().map(|s| s.into()).collect();
 	pub static ref WORD_INDEX_MAP: HashMap<String, usize> = {
 		let mut retval = HashMap::new();
 		for (i, item) in WORDLIST.iter().enumerate() {
@@ -324,7 +324,9 @@ impl Share {
 		self.member_threshold = bp.get_u8(36, 4)? + 1;
 
 		if self.group_count < self.group_threshold {
-			return Err(ErrorKind::Mnemonic("Invalid mnemonic. Group threshold cannot be greater than group count.".to_string()))?;
+			return Err(ErrorKind::Mnemonic(
+				"Invalid mnemonic. Group threshold cannot be greater than group count.".to_string(),
+			))?;
 		}
 
 		// remove padding and recover data

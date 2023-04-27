@@ -23,7 +23,7 @@ use std::fmt;
 use crate::util;
 
 /// Struct for returned shares
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct GroupShare {
 	/// Group id
 	pub group_id: u16,
@@ -39,20 +39,6 @@ pub struct GroupShare {
 	pub member_threshold: u8,
 	/// Member shares for the group
 	pub member_shares: Vec<Share>,
-}
-
-impl Default for GroupShare {
-	fn default() -> Self {
-		GroupShare {
-			group_id: 0,
-			iteration_exponent: 0,
-			group_index: 0,
-			group_threshold: 0,
-			group_count: 0,
-			member_threshold: 0,
-			member_shares: vec![],
-		}
-	}
 }
 
 impl fmt::Display for GroupShare {
@@ -91,7 +77,7 @@ impl GroupShare {
 		for s in &self.member_shares {
 			ret_vec.push(s.to_mnemonic()?.iter().fold(String::new(), |mut acc, s| {
 				acc.push_str(s);
-				acc.push_str(" ");
+				acc.push(' ');
 				acc
 			}))
 		}
@@ -135,7 +121,9 @@ pub fn generate_mnemonics(
 	}
 
 	if master_secret.len() % 2 != 0 {
-		return Err(ErrorKind::Value("The length of the master secret in bytes must be an even number".to_string()))?;
+		return Err(ErrorKind::Value(
+			"The length of the master secret in bytes must be an even number".to_string(),
+		))?;
 	}
 
 	if group_threshold as usize > groups.len() {
@@ -226,10 +214,7 @@ pub fn generate_mnemonics_random(
 /// mnemonics: List of mnemonics.
 /// passphrase: The passphrase used to encrypt the master secret.
 /// return: The master secret.
-pub fn combine_mnemonics(
-	mnemonics: &[Vec<String>],
-	passphrase: &str,
-) -> Result<Vec<u8>, Error> {
+pub fn combine_mnemonics(mnemonics: &[Vec<String>], passphrase: &str) -> Result<Vec<u8>, Error> {
 	let group_shares = decode_mnemonics(mnemonics)?;
 	let mut shares = vec![];
 	for mut gs in group_shares {
@@ -266,9 +251,11 @@ fn decode_mnemonics(mnemonics: &[Vec<String>]) -> Result<Vec<GroupShare>, Error>
 	let check_len = mnemonics[0].len();
 	for m in mnemonics {
 		if m.len() != check_len {
-			return Err(ErrorKind::Mnemonic("Invalid set of mnemonics. All mnemonics must have the same length.".to_string()))?;
+			return Err(ErrorKind::Mnemonic(
+				"Invalid set of mnemonics. All mnemonics must have the same length.".to_string(),
+			))?;
 		}
-		shares.push(Share::from_mnemonic(&m)?);
+		shares.push(Share::from_mnemonic(m)?);
 	}
 
 	let check_share = shares[0].clone();
@@ -283,10 +270,16 @@ fn decode_mnemonics(mnemonics: &[Vec<String>]) -> Result<Vec<GroupShare>, Error>
 			)))?;
 		}
 		if s.group_threshold != check_share.group_threshold {
-			return Err(ErrorKind::Mnemonic("Invalid set of mnemonics. All mnemonics must have the same group threshold".to_string()))?;
+			return Err(ErrorKind::Mnemonic(
+				"Invalid set of mnemonics. All mnemonics must have the same group threshold"
+					.to_string(),
+			))?;
 		}
 		if s.group_count != check_share.group_count {
-			return Err(ErrorKind::Mnemonic("Invalid set of mnemonics. All mnemonics must have the same group count".to_string()))?;
+			return Err(ErrorKind::Mnemonic(
+				"Invalid set of mnemonics. All mnemonics must have the same group count"
+					.to_string(),
+			))?;
 		}
 	}
 
@@ -294,21 +287,21 @@ fn decode_mnemonics(mnemonics: &[Vec<String>]) -> Result<Vec<GroupShare>, Error>
 
 	for s in shares {
 		if !group_index_map.contains_key(&s.group_index) {
-			let mut group_share = GroupShare::default();
-			group_share.group_id = s.identifier;
-			group_share.group_index = s.group_index;
-			group_share.group_threshold = s.group_threshold;
-			group_share.iteration_exponent = s.iteration_exponent;
-			group_share.group_count = s.group_count;
-			group_share.member_shares = vec![s.clone()];
-			group_share.member_threshold = s.member_threshold;
+			let group_share = GroupShare {
+				group_id: s.identifier,
+				group_index: s.group_index,
+				group_threshold: s.group_threshold,
+				iteration_exponent: s.iteration_exponent,
+				group_count: s.group_count,
+				member_shares: vec![s.clone()],
+				member_threshold: s.member_threshold,
+			};
 			group_index_map.insert(group_share.group_index, group_share);
 		} else {
 			let e = group_index_map.get_mut(&s.group_index).unwrap();
 			e.member_shares.push(s);
 		}
 	}
-
 
 	if group_index_map.len() < check_share.group_threshold as usize {
 		return Err(ErrorKind::Mnemonic(format!(
@@ -327,7 +320,10 @@ fn decode_mnemonics(mnemonics: &[Vec<String>]) -> Result<Vec<GroupShare>, Error>
 		.collect();
 
 	if groups.len() < check_share.group_threshold as usize {
-		return Err(ErrorKind::Mnemonic("Insufficient number of groups with member counts that meet member threshold.".to_string()))?;
+		return Err(ErrorKind::Mnemonic(
+			"Insufficient number of groups with member counts that meet member threshold."
+				.to_string(),
+		))?;
 	}
 
 	// TODO: Should probably return info making problem mnemonics easier to identify
@@ -342,7 +338,9 @@ fn decode_mnemonics(mnemonics: &[Vec<String>]) -> Result<Vec<GroupShare>, Error>
 		let test_share = g.member_shares[0].clone();
 		for ms in g.member_shares.iter() {
 			if test_share.member_threshold != ms.member_threshold {
-				return Err(ErrorKind::Mnemonic("Mismatching member thresholds".to_string()))?;
+				return Err(ErrorKind::Mnemonic(
+					"Mismatching member thresholds".to_string(),
+				))?;
 			}
 		}
 	}
@@ -377,7 +375,6 @@ mod tests {
 		let result = combine_mnemonics(&flatten_mnemonics(&mns)?, "")?;
 		println!("Single 3 of 5 Decoded: {:?}", result);
 		assert_eq!(result, master_secret);
-
 
 		// Test a few distinct groups
 		let mns = generate_mnemonics(
@@ -423,7 +420,7 @@ mod tests {
 		input.push(two.split(' ').map(|s| s.to_owned()).collect());
 		input.push(three.split(' ').map(|s| s.to_owned()).collect());
 		input.push(four.split(' ').map(|s| s.to_owned()).collect());
-		input.push(five.split(' ' ).map(|s| s.to_owned()).collect());
+		input.push(five.split(' ').map(|s| s.to_owned()).collect());
 		let _result = combine_mnemonics(&input, "TREZOR")?;
 
 		Ok(())
@@ -447,11 +444,9 @@ mod tests {
 		input.push(two.split(' ').map(|s| s.to_owned()).collect());
 		input.push(three.split(' ').map(|s| s.to_owned()).collect());
 		input.push(four.split(' ').map(|s| s.to_owned()).collect());
-		input.push(five.split(' ' ).map(|s| s.to_owned()).collect());
+		input.push(five.split(' ').map(|s| s.to_owned()).collect());
 		let result = combine_mnemonics(&input, "")?;
 		println!("Result: {}", String::from_utf8(result).unwrap());
 		Ok(())
 	}
 }
-
-

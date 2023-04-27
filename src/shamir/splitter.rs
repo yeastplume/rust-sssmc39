@@ -13,8 +13,8 @@
 // limitations under the License.
 
 use crate::error::{Error, ErrorKind};
-use crate::util;
 use crate::shamir::Share;
+use crate::util;
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
@@ -108,7 +108,9 @@ impl Splitter {
 			)))?;
 		}
 		if shared_secret.len() < 16 || shared_secret.len() % 2 != 0 {
-			return Err(ErrorKind::Argument("Secret must be at least 16 bytes in length and a multiple of 2".to_string()))?;
+			return Err(ErrorKind::Argument(
+				"Secret must be at least 16 bytes in length and a multiple of 2".to_string(),
+			))?;
 		}
 
 		let mut shares = vec![];
@@ -136,7 +138,7 @@ impl Splitter {
 
 		let random_part =
 			util::fill_vec_rand(shared_secret.len() - self.config.digest_length_bytes as usize);
-		let mut digest = self.create_digest(&random_part.to_vec(), &shared_secret);
+		let mut digest = self.create_digest(&random_part.to_vec(), shared_secret);
 		digest.append(&mut random_part.to_vec());
 
 		let mut base_shares = shares.clone();
@@ -172,10 +174,10 @@ impl Splitter {
 		let mut proto_share = shares[0].clone();
 		proto_share.share_value = vec![];
 
-		let shared_secret = self.interpolate(&shares, self.config.secret_index, &proto_share)?;
+		let shared_secret = self.interpolate(shares, self.config.secret_index, &proto_share)?;
 
 		if threshold != 1 {
-			self.check_digest(&shares, &shared_secret, &proto_share)?;
+			self.check_digest(shares, &shared_secret, &proto_share)?;
 		}
 
 		Ok(shared_secret)
@@ -198,7 +200,9 @@ impl Splitter {
 		let share_value_lengths = shares[0].share_value.len();
 		for s in shares {
 			if s.share_value.len() != share_value_lengths {
-				return Err(ErrorKind::Mnemonic("Invalid set of shares. All share values must have the same length".to_string()))?;
+				return Err(ErrorKind::Mnemonic(
+					"Invalid set of shares. All share values must have the same length".to_string(),
+				))?;
 			}
 		}
 
@@ -224,12 +228,13 @@ impl Splitter {
 	}
 
 	fn create_digest(&self, random_data: &[u8], shared_secret: &[u8]) -> Vec<u8> {
-		let mut mac = HmacSha256::new_varkey(random_data).expect("HMAC error");
-		mac.input(shared_secret);
-		let mut result = [0u8; 32];
-		result.copy_from_slice(mac.result().code().as_slice());
+		let mut mac = HmacSha256::new_from_slice(random_data).expect("HMAC error");
+		mac.update(shared_secret);
+		let result = mac.finalize().into_bytes();
+		// let mut result = [0u8; 32];
+		// result.copy_from_slice(mac.finalize().into_bytes());
 		let mut ret_vec = result.to_vec();
-		ret_vec.split_off(4);
+		ret_vec.truncate(4);
 		ret_vec
 	}
 
@@ -240,10 +245,12 @@ impl Splitter {
 		proto_share: &Share,
 	) -> Result<(), Error> {
 		let digest_share = self.interpolate(shares, self.config.digest_index, proto_share)?;
-		let mut digest = digest_share.share_value.clone();
+		let mut digest = digest_share.share_value;
 		let random_part = digest.split_off(self.config.digest_length_bytes as usize);
 		if digest != self.create_digest(&random_part, &shared_secret.share_value) {
-			return Err(ErrorKind::Digest("Invalid digest of the shared secret".to_string()))?;
+			return Err(ErrorKind::Digest(
+				"Invalid digest of the shared secret".to_string(),
+			))?;
 		}
 		Ok(())
 	}
@@ -275,12 +282,12 @@ mod tests {
 				return Ok(());
 			}
 			// randomly remove a share till we're at threshold
-			let remove_index = thread_rng().gen_range(0, shares.len());
+			let remove_index = thread_rng().gen_range(0..shares.len());
 			shares.remove(remove_index);
 		}
 		// now remove one more, and recovery should fail
 		if shares.len() > 1 {
-			let remove_index = thread_rng().gen_range(0, shares.len());
+			let remove_index = thread_rng().gen_range(0..shares.len());
 			shares.remove(remove_index);
 			assert!(sp.recover_secret(&shares, threshold).is_err());
 		}
@@ -312,5 +319,4 @@ mod tests {
 		split_recover_impl(4096, 10, 16)?;
 		Ok(())
 	}
-
 }

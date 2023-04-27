@@ -16,17 +16,16 @@
 
 use crate::error::Error;
 
-#[cfg(feature = "ring_pbkdf2")]
-use ring::pbkdf2;
-#[cfg(feature = "ring_pbkdf2")]
-use std::num::NonZeroU32;
-#[cfg(feature = "rust_crypto_pbkdf2")]
-use pbkdf2::pbkdf2;
-#[cfg(feature = "rust_crypto_pbkdf2")]
-use sha2::Sha256;
 #[cfg(feature = "rust_crypto_pbkdf2")]
 use hmac::Hmac;
-
+#[cfg(feature = "rust_crypto_pbkdf2")]
+use pbkdf2::pbkdf2;
+#[cfg(feature = "ring_pbkdf2")]
+use ring::pbkdf2;
+#[cfg(feature = "rust_crypto_pbkdf2")]
+use sha2::Sha256;
+#[cfg(feature = "ring_pbkdf2")]
+use std::num::NonZeroU32;
 
 /// Config Struct
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,15 +134,9 @@ impl MasterSecretEnc {
 	}
 
 	/// the round function used internally by the Feistel cipher
-	fn round_function(
-		&self,
-		i: u8,
-		passphrase: &str,
-		e: u8,
-		salt: &[u8],
-		r: &[u8],
-	) -> Vec<u8> {
-		let iterations = (self.config.min_iteration_count / u32::from(self.config.round_count)) << u32::from(e);
+	fn round_function(&self, i: u8, passphrase: &str, e: u8, salt: &[u8], r: &[u8]) -> Vec<u8> {
+		let iterations =
+			(self.config.min_iteration_count / u32::from(self.config.round_count)) << u32::from(e);
 		let out_length = r.len();
 		let mut salt = salt.to_owned();
 		let mut r = r.to_owned();
@@ -154,25 +147,32 @@ impl MasterSecretEnc {
 	}
 
 	#[cfg(feature = "rust_crypto_pbkdf2")]
-    /// Rust-crypto implementation of round function
-	fn pbkdf2_derive(&self, iterations: u32, salt: &[u8], password: &[u8], out_length: usize) -> Vec<u8> {
+	/// Rust-crypto implementation of round function
+	fn pbkdf2_derive(
+		&self,
+		iterations: u32,
+		salt: &[u8],
+		password: &[u8],
+		out_length: usize,
+	) -> Vec<u8> {
 		let mut out = vec![0; out_length];
-		pbkdf2::<Hmac<Sha256>>(
-			password,
-			salt,
-			iterations as usize,
-			&mut out,
-		);
+		pbkdf2::<Hmac<Sha256>>(password, salt, iterations as usize, &mut out);
 		out
 	}
 
 	#[cfg(feature = "ring_pbkdf2")]
-    /// Ring implementation of round function
-	fn pbkdf2_derive(&self, iterations: u32, salt: &[u8], password: &[u8], out_length: usize) -> Vec<u8> {
+	/// Ring implementation of round function
+	fn pbkdf2_derive(
+		&self,
+		iterations: u32,
+		salt: &[u8],
+		password: &[u8],
+		out_length: usize,
+	) -> Vec<u8> {
 		let mut out = vec![0; out_length];
 		pbkdf2::derive(
 			ring::pbkdf2::PBKDF2_HMAC_SHA256,
-			NonZeroU32::new(iterations as u32).unwrap(),
+			NonZeroU32::new(iterations).unwrap(),
 			salt,
 			password,
 			&mut out,
@@ -200,19 +200,24 @@ mod tests {
 		println!("master_secret: {:?}", secret);
 		let encrypted_secret = enc.encrypt(&secret, passphrase, iteration_exponent, identifier);
 		println!("encrypted_secret: {:?}", encrypted_secret);
-		let decrypted_secret = enc.decrypt(&encrypted_secret, passphrase, iteration_exponent, identifier);
+		let decrypted_secret = enc.decrypt(
+			&encrypted_secret,
+			passphrase,
+			iteration_exponent,
+			identifier,
+		);
 		println!("decrypted_secret: {:?}", decrypted_secret);
 		assert_eq!(secret, decrypted_secret);
 	}
 
 	#[test]
 	fn roundtrip_test_vector() {
-        // from test vector
-        for e in vec![0, 6] {
-            let secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
-            roundtrip_test(secret, "", 7470, e);
-        }
-    }
+		// from test vector
+		for e in vec![0, 6] {
+			let secret = b"\x0c\x94\x90\xbcn\xd6\xbc\xbf\xac>\xbe}\xeeV\xf2P".to_vec();
+			roundtrip_test(secret, "", 7470, e);
+		}
+	}
 
 	#[test]
 	#[ignore]
@@ -221,38 +226,38 @@ mod tests {
 		roundtrip_test(secret, "", 7470, 12);
 	}
 
-    #[test]
-    fn roundtrip_16_bytes() {
-        // now some random 16 byte secrets
-        for _ in 0..20 {
-            let s: [u8; 16] = thread_rng().gen();
-            let id: u16 = thread_rng().gen();
-            roundtrip_test(s.to_vec(), "", id, 0);
-        }
-    }
+	#[test]
+	fn roundtrip_16_bytes() {
+		// now some random 16 byte secrets
+		for _ in 0..20 {
+			let s: [u8; 16] = thread_rng().gen();
+			let id: u16 = thread_rng().gen();
+			roundtrip_test(s.to_vec(), "", id, 0);
+		}
+	}
 
-    #[test]
-    fn roundtrip_32_bytes() {
+	#[test]
+	fn roundtrip_32_bytes() {
 		// now some random 32 byte secrets
 		for _ in 0..20 {
 			let s: [u8; 32] = thread_rng().gen();
 			let id: u16 = thread_rng().gen();
 			roundtrip_test(s.to_vec(), "", id, 0);
 		}
-    }
+	}
 
-    #[test]
-    fn roundtrip_12_bytes() {
+	#[test]
+	fn roundtrip_12_bytes() {
 		// now some random 12 byte secrets
 		for _ in 0..10 {
 			let s: [u8; 12] = thread_rng().gen();
 			let id: u16 = thread_rng().gen();
 			roundtrip_test(s.to_vec(), "", id, 0);
 		}
-    }
+	}
 
-    #[test]
-    fn roundtrip_32_bytes_password() {
+	#[test]
+	fn roundtrip_32_bytes_password() {
 		// now some random 32 byte secrets with password
 		for _ in 0..10 {
 			let s: [u8; 12] = thread_rng().gen();
